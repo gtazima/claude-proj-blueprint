@@ -4,6 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.routes import tasks
+from app.core.config import settings
 from app.db.session import init_db
 
 
