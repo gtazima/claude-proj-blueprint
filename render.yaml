@@ -2,7 +2,7 @@ services:
   - type: web
     name: agroecologia-api
     runtime: docker
-    dockerContext: ./src/api
+    rootDir: ./src/api
     region: ohio  # us-east-ohio — mais próximo do Brasil com free tier
     plan: free
     envVars:
