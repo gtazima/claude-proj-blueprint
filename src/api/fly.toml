@@ -1,0 +1,33 @@
+# fly.toml — configuração de deploy no Fly.io
+# Antes do primeiro deploy: `fly launch --no-deploy` para registrar o app,
+# depois `fly volumes create agroecologia_data --size 1` para o volume SQLite.
+
+app = "agroecologia-api"   # altere para o nome escolhido no `fly launch`
+primary_region = "gru"     # São Paulo — mais próximo da propriedade
+
+[build]
+
+[mounts]
+source = "agroecologia_data"
+destination = "/data"
+
+[http_service]
+internal_port = 8000
+force_https = true
+auto_stop_machines = false   # não deixa dormir — importante para o envio matinal do WhatsApp
+auto_start_machines = true
+min_machines_running = 1
+
+[http_service.concurrency]
+type = "requests"
+hard_limit = 100
+soft_limit = 50
+
+[[vm]]
+memory = "256mb"
+cpu_kind = "shared"
+cpus = 1
+
+[env]
+DATABASE_URL = "sqlite:////data/agroecologia.db"
+# ALLOWED_ORIGINS é definido como secret: `fly secrets set ALLOWED_ORIGINS=https://...`
