@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: agroecologia-api
+    runtime: docker
+    dockerContext: ./src/api
+    dockerfilePath: ./src/api/Dockerfile
+    region: ohio  # us-east-ohio — mais próximo do Brasil com free tier
+    plan: free
+    envVars:
+      - key: DATABASE_URL
+        sync: false  # preencher manualmente no dashboard do Render
+      - key: ALLOWED_ORIGINS
+        sync: false  # ex: https://agroecologia.pages.dev
+      - key: COMPLETION_UNDO_WINDOW_SECONDS
+        value: "300"

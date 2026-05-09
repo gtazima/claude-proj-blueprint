@@ -26,7 +26,7 @@ export default defineConfig({
         runtimeCaching: [
           {
             // Cache das chamadas de API — NetworkFirst: usa rede, cai no cache se offline
-            urlPattern: ({ url }) => url.pathname.startsWith("/api") || url.hostname.endsWith("fly.dev"),
+            urlPattern: ({ url }) => url.pathname.startsWith("/api") || url.hostname.endsWith("onrender.com"),
             handler: "NetworkFirst",
             options: {
               cacheName: "api-cache",
