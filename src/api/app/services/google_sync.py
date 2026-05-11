@@ -115,17 +115,17 @@ def poll_calendar(token: str, prop: PropertySettings, session: Session) -> list[
     """Retorna eventos novos/modificados desde o último polling. Atualiza nextSyncToken."""
     params: dict = {
         "singleEvents": "true",
-        "orderBy": "updated",
         "maxResults": "50",
     }
 
     if prop.google_last_poll_token:
         params["syncToken"] = prop.google_last_poll_token
     else:
-        # Primeira vez: busca últimas 24h
+        # Primeira vez: busca últimas 24h ordenando por atualização
         from datetime import timedelta
         since = (datetime.now(timezone.utc) - timedelta(hours=24)).strftime("%Y-%m-%dT%H:%M:%SZ")
         params["updatedMin"] = since
+        params["orderBy"] = "updated"
 
     resp = httpx.get(
         f"{CALENDAR_BASE}/calendars/primary/events",
