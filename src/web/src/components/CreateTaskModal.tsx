@@ -55,9 +55,7 @@ export default function CreateTaskModal({ onClose, onSuccess, initialType, initi
   const [windowEnd, setWindowEnd]   = useState(
     editSource?.scheduled_window_end
       ? toLocalDateKey(new Date(editSource.scheduled_window_end))
-      : editSource?.scheduled_window_start
-        ? toLocalDateKey(new Date(editSource.scheduled_window_start))
-        : initialDate ?? ""
+      : initialDate ?? ""
   );
   const [depSearch, setDepSearch]   = useState("");
   const [depIds, setDepIds]         = useState<string[]>(editSource?.dependency_ids ?? []);

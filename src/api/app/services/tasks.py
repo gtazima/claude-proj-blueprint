@@ -218,10 +218,6 @@ class TaskService:
             for t in tasks
             if t.completed_at is None
             and not t.is_pending_review
-            and (
-                t.scheduled_window_start is None
-                or _ensure_aware(t.scheduled_window_start) <= now
-            )
         ]
         return sort_by_priority(active, now=now)
 
