@@ -23,6 +23,7 @@ class TaskCreate(BaseModel):
     scheduled_window_end: datetime | None = None
     financial_score: int = Field(default=0, ge=0, le=5)
     dependency_ids: list[UUID] = Field(default_factory=list)
+    duration_minutes: int | None = Field(default=None, ge=1)
 
 
 class TaskUpdate(BaseModel):
@@ -35,6 +36,7 @@ class TaskUpdate(BaseModel):
     scheduled_window_end: datetime | None = None
     financial_score: int | None = Field(default=None, ge=0, le=5)
     dependency_ids: list[UUID] | None = None
+    duration_minutes: int | None = Field(default=None, ge=1)
 
 
 class TaskDeferRequest(BaseModel):
@@ -65,6 +67,9 @@ class TaskRead(BaseModel):
     repeatedly_deferred: bool
     created_at: datetime
     updated_at: datetime
+    is_pending_review: bool
+    duration_minutes: int | None
+    calendar_event_id: str | None
 
 
 class TaskWithPriority(TaskRead):

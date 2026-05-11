@@ -45,6 +45,9 @@ def _to_read(task) -> TaskRead:
         repeatedly_deferred=task.repeatedly_deferred,
         created_at=task.created_at,
         updated_at=task.updated_at,
+        is_pending_review=task.is_pending_review,
+        duration_minutes=task.duration_minutes,
+        calendar_event_id=task.calendar_event_id,
     )
 
 
@@ -170,3 +173,34 @@ def defer_task(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
     return _to_read(task)
+
+
+@router.get("/pending-review", response_model=list[TaskRead])
+def list_pending_review(
+    service: TaskService = Depends(get_task_service),
+) -> list[TaskRead]:
+    return [_to_read(t) for t in service.list_pending_review()]
+
+
+@router.post("/{task_id}/confirm-review", response_model=TaskRead)
+def confirm_review(
+    task_id: UUID,
+    service: TaskService = Depends(get_task_service),
+) -> TaskRead:
+    try:
+        task = service.confirm_review(task_id)
+    except TaskNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e)) from e
+    return _to_read(task)
+
+
+@router.post("/{task_id}/discard-review", status_code=status.HTTP_204_NO_CONTENT)
+def discard_review(
+    task_id: UUID,
+    service: TaskService = Depends(get_task_service),
+) -> Response:
+    try:
+        service.discard_review(task_id)
+    except TaskNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e)) from e
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

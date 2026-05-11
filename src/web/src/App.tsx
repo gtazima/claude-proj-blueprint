@@ -1,17 +1,53 @@
-import { Routes, Route, Navigate } from "react-router-dom";
+import { Navigate, Route, Routes } from "react-router-dom";
+import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import Layout from "./components/Layout.tsx";
+import LoginPage from "./pages/Login.tsx";
 import AgendaPage from "./pages/Agenda.tsx";
 import TarefasPage from "./pages/Today.tsx";
+import SettingsPage from "./pages/Settings.tsx";
+import GoogleCallbackPage from "./pages/GoogleCallback.tsx";
 
-export default function App() {
+function ProtectedRoutes() {
+  const { session, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-stone-100 flex items-center justify-center">
+        <div className="w-5 h-5 border-2 border-green-600 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (!session) return <Navigate to="/login" replace />;
+
   return (
     <Layout>
       <Routes>
-        <Route path="/"        element={<Navigate to="/tarefas" replace />} />
-        <Route path="/hoje"    element={<Navigate to="/tarefas" replace />} />
-        <Route path="/agenda"  element={<AgendaPage />} />
-        <Route path="/tarefas" element={<TarefasPage />} />
+        <Route path="/"                               element={<Navigate to="/tarefas" replace />} />
+        <Route path="/hoje"                           element={<Navigate to="/tarefas" replace />} />
+        <Route path="/agenda"                         element={<AgendaPage />} />
+        <Route path="/tarefas"                        element={<TarefasPage />} />
+        <Route path="/configuracoes"                  element={<SettingsPage />} />
+        <Route path="/configuracoes/google/callback"  element={<GoogleCallbackPage />} />
       </Routes>
     </Layout>
   );
+}
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <Routes>
+        <Route path="/login" element={<LoginWithRedirect />} />
+        <Route path="/*"     element={<ProtectedRoutes />} />
+      </Routes>
+    </AuthProvider>
+  );
+}
+
+function LoginWithRedirect() {
+  const { session, loading } = useAuth();
+  if (loading) return null;
+  if (session) return <Navigate to="/tarefas" replace />;
+  return <LoginPage />;
 }

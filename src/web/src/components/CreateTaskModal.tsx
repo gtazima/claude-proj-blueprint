@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import clsx from "clsx";
-import { tasksApi, type Executor, type TaskWithPriority } from "../api/tasks.ts";
+import { tasksApi, type Executor, type Task, type TaskWithPriority } from "../api/tasks.ts";
 import {
   sortedTypeTags, sortedCultureTags,
   incrementTagFrequency, buildTitle, parseTitle,
@@ -10,10 +10,11 @@ import {
 
 interface Props {
   onClose:       () => void;
-  onSuccess:     () => void;
+  onSuccess:     (savedId?: string) => void;
   initialType?:  string;
-  initialDate?:  string;       // YYYY-MM-DD, pre-fills deadline
-  task?:         TaskWithPriority; // when provided → edit mode
+  initialDate?:  string;
+  task?:         Task | TaskWithPriority;
+  initialTask?:  Task;
 }
 
 const EXECUTORS: { value: Executor; label: string; abbr: string; color: string }[] = [
@@ -35,27 +36,28 @@ function toLocalDateKey(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-export default function CreateTaskModal({ onClose, onSuccess, initialType, initialDate, task }: Props) {
+export default function CreateTaskModal({ onClose, onSuccess, initialType, initialDate, task, initialTask }: Props) {
+  const editSource = task ?? initialTask;
   const isEdit  = !!task;
-  const parsed  = task ? parseTitle(task.title) : null;
+  const parsed  = editSource ? parseTitle(editSource.title) : null;
 
   const [baseTitle, setBaseTitle]   = useState(parsed?.base ?? "");
-  const [description, setDescription] = useState(task?.description ?? "");
-  const [executor, setExecutor]     = useState<Executor>(task?.executor ?? readLastExecutor());
+  const [description, setDescription] = useState(editSource?.description ?? "");
+  const [executor, setExecutor]     = useState<Executor>(editSource?.executor ?? readLastExecutor());
   const [selType, setSelType]       = useState<string | null>(
-    isEdit ? (parsed?.type ?? null)
-           : (initialType && isTypeTag(initialType) ? initialType : null)
+    editSource ? (parsed?.type ?? null)
+               : (initialType && isTypeTag(initialType) ? initialType : null)
   );
   const [selCulture, setSelCulture] = useState<string | null>(
-    isEdit ? (parsed?.culture ?? null)
-           : (initialType && isCultureTag(initialType) ? initialType : null)
+    editSource ? (parsed?.culture ?? null)
+               : (initialType && isCultureTag(initialType) ? initialType : null)
   );
   const [windowEnd, setWindowEnd]   = useState(
-    task?.scheduled_window_end ? toLocalDateKey(new Date(task.scheduled_window_end))
+    editSource?.scheduled_window_end ? toLocalDateKey(new Date(editSource.scheduled_window_end))
     : initialDate ?? ""
   );
   const [depSearch, setDepSearch]   = useState("");
-  const [depIds, setDepIds]         = useState<string[]>(task?.dependency_ids ?? []);
+  const [depIds, setDepIds]         = useState<string[]>(editSource?.dependency_ids ?? []);
   const [showDeps, setShowDeps]     = useState(false);
 
   const typeTags    = sortedTypeTags();
@@ -102,11 +104,11 @@ export default function CreateTaskModal({ onClose, onSuccess, initialType, initi
         ...(windowEndISO ? { scheduled_window_end: windowEndISO } : {}),
       });
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       if (!isEdit) localStorage.setItem(LAST_EXECUTOR_KEY, executor);
       if (selType)    incrementTagFrequency(selType);
       if (selCulture) incrementTagFrequency(selCulture);
-      onSuccess();
+      onSuccess(data?.id);
     },
   });
 

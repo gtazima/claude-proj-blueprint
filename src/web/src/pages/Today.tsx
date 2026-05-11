@@ -10,6 +10,7 @@ import {
 import KanbanView, { type KanbanMode, type DateDelta } from "../components/KanbanView.tsx";
 import CompletedTaskRow from "../components/CompletedTaskRow.tsx";
 import CreateTaskModal from "../components/CreateTaskModal.tsx";
+import ReviewCard from "../components/ReviewCard.tsx";
 
 const LAST_EXECUTOR_KEY = "last_executor";
 const MODE_KEY          = "kanban_mode";
@@ -70,6 +71,27 @@ export default function TodayPage() {
     queryFn:  tasksApi.listCompletedToday,
     refetchInterval: 60_000,
   });
+
+  const { data: pendingReview = [] } = useQuery<Task[]>({
+    queryKey: ["tasks", "pending-review"],
+    queryFn:  tasksApi.listPendingReview,
+    refetchInterval: 60_000,
+  });
+
+  const confirmReview = useMutation({
+    mutationFn: (id: string) => tasksApi.confirmReview(id),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["tasks", "pending-review"] });
+      void qc.invalidateQueries({ queryKey: ["tasks", "today"] });
+    },
+  });
+
+  const discardReview = useMutation({
+    mutationFn: (id: string) => tasksApi.discardReview(id),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ["tasks", "pending-review"] }),
+  });
+
+  const [reviewEditTask, setReviewEditTask] = useState<Task | undefined>(undefined);
 
   const kanbanTasks = useMemo<TaskWithPriority[]>(() =>
     showCompleted ? [...active, ...completedAsActive(completed)] : active,
@@ -228,6 +250,34 @@ export default function TodayPage() {
         </div>
       </header>
 
+      {/* ── Fila de revisão (eventos importados do Calendar) ── */}
+      {pendingReview.length > 0 && (
+        <div className="shrink-0 px-3 pt-3">
+          <details open className="bg-amber-50 rounded-lg border border-amber-200">
+            <summary className="flex items-center gap-2 px-3 py-2 text-xs font-medium text-amber-800 cursor-pointer select-none list-none hover:bg-amber-100 rounded-lg">
+              <svg className="h-3.5 w-3.5 text-amber-600" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2">
+                <rect x="2" y="3" width="12" height="11" rx="1.5" />
+                <path d="M5 1.5v3M11 1.5v3M2 7h12" strokeLinecap="round" />
+              </svg>
+              <span className="font-semibold">{pendingReview.length}</span>
+              {pendingReview.length === 1 ? "evento" : "eventos"} do Calendar para revisar
+            </summary>
+            <div className="flex flex-wrap gap-2 px-3 pb-3 pt-1">
+              {pendingReview.map((task) => (
+                <ReviewCard
+                  key={task.id}
+                  task={task}
+                  disabled={confirmReview.isPending || discardReview.isPending}
+                  onConfirm={() => confirmReview.mutate(task.id)}
+                  onEdit={() => { setReviewEditTask(task); setShowCreate(true); }}
+                  onDiscard={() => discardReview.mutate(task.id)}
+                />
+              ))}
+            </div>
+          </details>
+        </div>
+      )}
+
       {/* ── Kanban ── */}
       <div className="flex-1 overflow-hidden p-3 flex flex-col gap-3 min-h-0">
         {isLoading ? (
@@ -260,8 +310,14 @@ export default function TodayPage() {
       {showCreate && (
         <CreateTaskModal
           initialType={createType}
-          onClose={() => setShowCreate(false)}
-          onSuccess={() => { setShowCreate(false); invalidate(); }}
+          task={reviewEditTask}
+          onClose={() => { setShowCreate(false); setReviewEditTask(undefined); }}
+          onSuccess={(savedId) => {
+            setShowCreate(false);
+            if (reviewEditTask && savedId) confirmReview.mutate(savedId);
+            setReviewEditTask(undefined);
+            invalidate();
+          }}
         />
       )}
     </div>

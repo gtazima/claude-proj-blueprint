@@ -235,6 +235,31 @@ class TaskService:
         tasks = list(self.session.exec(statement).all())
         return [t for t in tasks if _ensure_aware(t.completed_at) >= start_of_day]
 
+    def list_pending_review(self) -> list[Task]:
+        stmt = (
+            select(Task)
+            .where(Task.deleted_at.is_(None))
+            .where(Task.is_pending_review == True)  # noqa: E712
+        )
+        return list(self.session.exec(stmt).all())
+
+    def confirm_review(self, task_id: UUID) -> Task:
+        task = self.get(task_id)
+        task.is_pending_review = False
+        self._touch(task, device_id=None)
+        self.session.add(task)
+        self.session.commit()
+        self.session.refresh(task)
+        return task
+
+    def discard_review(self, task_id: UUID) -> None:
+        """Soft delete preservando calendar_event_id para evitar reimportação."""
+        task = self.get(task_id)
+        task.deleted_at = _utcnow()
+        self._touch(task, device_id=None)
+        self.session.add(task)
+        self.session.commit()
+
     def list_upcoming(self, days: int, *, now: datetime | None = None) -> list[Task]:
         """Agenda futura: tarefas com janela começando dentro dos próximos N dias."""
         now = now or _utcnow()

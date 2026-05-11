@@ -16,6 +16,9 @@ export interface Task {
   repeatedly_deferred: boolean;
   created_at: string;
   updated_at: string;
+  is_pending_review: boolean;
+  duration_minutes: number | null;
+  calendar_event_id: string | null;
 }
 
 export interface TaskWithPriority extends Task {
@@ -45,13 +48,22 @@ export interface TaskUpdatePayload {
   dependency_ids?: string[];
 }
 
+import { supabase } from "../lib/supabase";
+
 // Em dev o proxy do Vite resolve /api → localhost:8000.
-// Em produção, VITE_API_URL aponta para https://<app>.fly.dev/api
-const BASE = import.meta.env.VITE_API_URL ?? "/api";
+// Em produção, VITE_API_URL aponta para https://agroecologia.onrender.com/api
+const BASE = import.meta.env.VITE_API_URL || "/api";
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const { data: { session } } = await supabase.auth.getSession();
+  const token = session?.access_token;
+
   const res = await fetch(`${BASE}${path}`, {
-    headers: { "Content-Type": "application/json", ...init?.headers },
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...init?.headers,
+    },
     ...init,
   });
   if (!res.ok) {
@@ -66,6 +78,14 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
 export const tasksApi = {
   listToday: () => request<TaskWithPriority[]>("/tasks/today"),
+
+  listPendingReview: () => request<Task[]>("/tasks/pending-review"),
+
+  confirmReview: (id: string) =>
+    request<Task>(`/tasks/${id}/confirm-review`, { method: "POST" }),
+
+  discardReview: (id: string) =>
+    request<void>(`/tasks/${id}/discard-review`, { method: "POST" }),
 
   listCompletedToday: () => request<Task[]>("/tasks/completed-today"),
 

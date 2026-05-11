@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { NavLink } from "react-router-dom";
 import clsx from "clsx";
+import { useAuth } from "../contexts/AuthContext";
 
 const MODULES = [
   {
@@ -95,6 +96,8 @@ interface Props {
 }
 
 export default function Layout({ children }: Props) {
+  const { user, signOut } = useAuth();
+
   return (
     <div className="flex h-screen bg-stone-100 overflow-hidden">
       {/* Sidebar */}
@@ -134,8 +137,24 @@ export default function Layout({ children }: Props) {
           )}
         </nav>
 
-        <div className="px-4 py-3 border-t border-stone-100">
-          <span className="text-xs text-stone-400">Iteração 1 — MVP</span>
+        <div className="px-3 py-3 border-t border-stone-100">
+          <p className="text-xs text-stone-500 font-medium truncate mb-2" title={user?.email}>
+            {user?.email}
+          </p>
+          <NavLink
+            to="/configuracoes"
+            className={({ isActive }) =>
+              `block text-xs mb-1 transition-colors ${isActive ? "text-stone-700 font-medium" : "text-stone-400 hover:text-stone-600"}`
+            }
+          >
+            Configurações
+          </NavLink>
+          <button
+            onClick={() => void signOut()}
+            className="w-full text-left text-xs text-stone-400 hover:text-stone-600 transition-colors"
+          >
+            Sair
+          </button>
         </div>
       </aside>
 
