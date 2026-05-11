@@ -101,12 +101,18 @@ def delete_task(google_task_id: str, token: str, list_id: str) -> None:
     )
 
 
-def complete_task(google_task_id: str, token: str, list_id: str) -> None:
-    httpx.patch(
+def complete_task(google_task_id: str, token: str, list_id: str, fallback_list_id: str | None = None) -> None:
+    resp = httpx.patch(
         f"{TASKS_BASE}/lists/{list_id}/tasks/{google_task_id}",
         headers=_tasks_headers(token),
         json={"status": "completed"}, timeout=10,
     )
+    if resp.status_code == 404 and fallback_list_id:
+        httpx.patch(
+            f"{TASKS_BASE}/lists/{fallback_list_id}/tasks/{google_task_id}",
+            headers=_tasks_headers(token),
+            json={"status": "completed"}, timeout=10,
+        )
 
 
 # ── Google Calendar polling ────────────────────────────────────────────────
@@ -200,7 +206,8 @@ def poll_tasks(token: str, prop: PropertySettings, session: Session) -> None:
         scheduled: datetime | None = None
         if due_str:
             try:
-                scheduled = datetime.fromisoformat(due_str.replace("Z", "+00:00"))
+                # Parse only the date part — Google Tasks stores due at UTC midnight
+                scheduled = datetime.strptime(due_str[:10], "%Y-%m-%d").replace(tzinfo=timezone.utc)
             except ValueError:
                 pass
 
@@ -257,8 +264,9 @@ def run_sync_cycle(session: Session) -> None:
         try:
             if task.completed_at:
                 if task.google_task_id:
-                    list_id = prop.google_tasks_list_id if task.scheduled_window_end else prop.google_memory_list_id
-                    complete_task(task.google_task_id, token, list_id)
+                    primary = prop.google_tasks_list_id if task.scheduled_window_end else prop.google_memory_list_id
+                    fallback = prop.google_memory_list_id if task.scheduled_window_end else prop.google_tasks_list_id
+                    complete_task(task.google_task_id, token, primary, fallback_list_id=fallback)
             else:
                 list_id = prop.google_tasks_list_id if task.scheduled_window_end else prop.google_memory_list_id
                 push_task(task, token, list_id, session)
