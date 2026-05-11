@@ -155,6 +155,67 @@ def poll_calendar(token: str, prop: PropertySettings, session: Session) -> list[
     return data.get("items", [])
 
 
+# ── Google Tasks polling (pull) ───────────────────────────────────────────
+
+def poll_tasks(token: str, prop: PropertySettings, session: Session) -> None:
+    """Importa tarefas novas criadas diretamente no Google Tasks como pending_review."""
+    if not prop.google_tasks_list_id:
+        return
+
+    params: dict = {"showCompleted": "false", "showHidden": "false"}
+    if prop.google_last_sync_at:
+        since = prop.google_last_sync_at
+        if since.tzinfo is None:
+            since = since.replace(tzinfo=timezone.utc)
+        params["updatedMin"] = since.strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    resp = httpx.get(
+        f"{TASKS_BASE}/lists/{prop.google_tasks_list_id}/tasks",
+        headers=_tasks_headers(token),
+        params=params, timeout=15,
+    )
+
+    if resp.status_code != 200:
+        logger.error("Erro ao fazer polling do Google Tasks: %s", resp.text)
+        return
+
+    for item in resp.json().get("items", []):
+        google_task_id = item.get("id")
+        if not google_task_id:
+            continue
+
+        # Tarefa já existe no app — app é fonte da verdade, não sobrescreve
+        existing = session.exec(
+            select(Task).where(Task.google_task_id == google_task_id)
+        ).first()
+        if existing:
+            continue
+
+        title = (item.get("title") or "").strip()
+        if not title:
+            continue
+
+        notes = item.get("notes") or None
+        due_str = item.get("due")
+        scheduled: datetime | None = None
+        if due_str:
+            try:
+                scheduled = datetime.fromisoformat(due_str.replace("Z", "+00:00"))
+            except ValueError:
+                pass
+
+        session.add(Task(
+            title=title,
+            description=notes,
+            executor=Executor.NAO_ATRIBUIDO,
+            scheduled_window_start=scheduled,
+            is_pending_review=True,
+            google_task_id=google_task_id,
+        ))
+
+    session.commit()
+
+
 # ── Ciclo principal ────────────────────────────────────────────────────────
 
 def run_sync_cycle(session: Session) -> None:
@@ -232,6 +293,12 @@ def run_sync_cycle(session: Session) -> None:
         _import_calendar_events(events, session)
     except Exception as e:
         logger.error("Erro ao fazer polling do Calendar: %s", e)
+
+    # ── Poll: tarefas novas criadas diretamente no Google Tasks ──
+    try:
+        poll_tasks(token, prop, session)
+    except Exception as e:
+        logger.error("Erro ao fazer polling do Google Tasks: %s", e)
 
     # Atualiza timestamp do último sync
     prop = session.get(PropertySettings, "default")  # refresh após commits
