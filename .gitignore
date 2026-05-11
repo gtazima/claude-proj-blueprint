@@ -32,6 +32,7 @@ logs/agent-events.jsonl
 .env
 .env.*
 !.env.example
+!src/web/.env.production
 
 # =============================================================================
 # OS
