@@ -268,7 +268,9 @@ export default function TodayPage() {
                   key={task.id}
                   task={task}
                   disabled={confirmReview.isPending || discardReview.isPending}
-                  onConfirm={() => confirmReview.mutate(task.id)}
+                  onConfirm={() => confirmReview.mutate(task.id, {
+                    onSuccess: () => { setReviewEditTask(task); setShowCreate(true); },
+                  })}
                   onEdit={() => { setReviewEditTask(task); setShowCreate(true); }}
                   onDiscard={() => discardReview.mutate(task.id)}
                 />
