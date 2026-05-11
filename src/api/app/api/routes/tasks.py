@@ -97,6 +97,13 @@ def list_upcoming(
     return [_to_with_priority(t, score=scores[t.id]) for t in tasks]
 
 
+@router.get("/pending-review", response_model=list[TaskRead])
+def list_pending_review(
+    service: TaskService = Depends(get_task_service),
+) -> list[TaskRead]:
+    return [_to_read(t) for t in service.list_pending_review()]
+
+
 @router.get("/{task_id}", response_model=TaskRead)
 def get_task(
     task_id: UUID,
@@ -173,13 +180,6 @@ def defer_task(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
     return _to_read(task)
-
-
-@router.get("/pending-review", response_model=list[TaskRead])
-def list_pending_review(
-    service: TaskService = Depends(get_task_service),
-) -> list[TaskRead]:
-    return [_to_read(t) for t in service.list_pending_review()]
 
 
 @router.post("/{task_id}/confirm-review", response_model=TaskRead)
