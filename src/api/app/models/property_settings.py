@@ -24,6 +24,5 @@ class PropertySettings(SQLModel, table=True):
 
     # Controle de sync incremental
     google_last_sync_at: datetime | None = Field(default=None)
-    google_last_poll_token: str | None = Field(default=None)  # nextSyncToken do Calendar
 
     updated_at: datetime = Field(default_factory=utcnow, nullable=False)

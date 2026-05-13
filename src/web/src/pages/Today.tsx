@@ -250,17 +250,16 @@ export default function TodayPage() {
         </div>
       </header>
 
-      {/* ── Fila de revisão (eventos importados do Calendar) ── */}
+      {/* ── Fila de revisão (tarefas importadas do Google Tasks) ── */}
       {pendingReview.length > 0 && (
         <div className="shrink-0 px-3 pt-3">
           <details open className="bg-amber-50 rounded-lg border border-amber-200">
             <summary className="flex items-center gap-2 px-3 py-2 text-xs font-medium text-amber-800 cursor-pointer select-none list-none hover:bg-amber-100 rounded-lg">
               <svg className="h-3.5 w-3.5 text-amber-600" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2">
-                <rect x="2" y="3" width="12" height="11" rx="1.5" />
-                <path d="M5 1.5v3M11 1.5v3M2 7h12" strokeLinecap="round" />
+                <path d="M3 4h10M3 8h10M3 12h6" strokeLinecap="round" />
               </svg>
               <span className="font-semibold">{pendingReview.length}</span>
-              {pendingReview.length === 1 ? "evento" : "eventos"} do Calendar para revisar
+              {pendingReview.length === 1 ? "tarefa" : "tarefas"} do Google Tasks para revisar
             </summary>
             <div className="flex flex-wrap gap-2 px-3 pb-3 pt-1">
               {pendingReview.map((task) => (

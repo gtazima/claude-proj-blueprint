@@ -18,7 +18,6 @@ export interface Task {
   updated_at: string;
   is_pending_review: boolean;
   duration_minutes: number | null;
-  calendar_event_id: string | null;
 }
 
 export interface TaskWithPriority extends Task {

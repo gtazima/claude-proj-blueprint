@@ -1,11 +1,10 @@
 """
-Sincronização de tarefas com Google Tasks e polling do Google Calendar.
+Sincronização de tarefas com Google Tasks.
 Roda como worker assíncrono em background (asyncio.create_task no lifespan).
 """
 
 import logging
 from datetime import datetime, timezone
-from uuid import UUID
 
 import httpx
 from sqlmodel import Session, select
@@ -17,7 +16,6 @@ from app.services.google_oauth import GoogleOAuthError, get_valid_access_token
 logger = logging.getLogger(__name__)
 
 TASKS_BASE = "https://tasks.googleapis.com/tasks/v1"
-CALENDAR_BASE = "https://www.googleapis.com/calendar/v3"
 
 
 # ── Google Tasks helpers ────────────────────────────────────────────────────
@@ -113,52 +111,6 @@ def complete_task(google_task_id: str, token: str, list_id: str, fallback_list_i
             headers=_tasks_headers(token),
             json={"status": "completed"}, timeout=10,
         )
-
-
-# ── Google Calendar polling ────────────────────────────────────────────────
-
-def poll_calendar(token: str, prop: PropertySettings, session: Session) -> list[dict]:
-    """Retorna eventos novos/modificados desde o último polling. Atualiza nextSyncToken."""
-    params: dict = {
-        "singleEvents": "true",
-        "maxResults": "50",
-    }
-
-    if prop.google_last_poll_token:
-        params["syncToken"] = prop.google_last_poll_token
-    else:
-        # Primeira vez: busca últimas 24h ordenando por atualização
-        from datetime import timedelta
-        since = (datetime.now(timezone.utc) - timedelta(hours=24)).strftime("%Y-%m-%dT%H:%M:%SZ")
-        params["updatedMin"] = since
-        params["orderBy"] = "updated"
-
-    resp = httpx.get(
-        f"{CALENDAR_BASE}/calendars/primary/events",
-        headers={"Authorization": f"Bearer {token}"},
-        params=params, timeout=15,
-    )
-
-    # syncToken inválido (410 Gone) — recomeça sem token
-    if resp.status_code == 410:
-        prop.google_last_poll_token = None
-        session.add(prop)
-        session.commit()
-        return poll_calendar(token, prop, session)
-
-    if resp.status_code != 200:
-        logger.error("Erro ao fazer polling do Calendar: %s", resp.text)
-        return []
-
-    data = resp.json()
-    next_token = data.get("nextSyncToken")
-    if next_token:
-        prop.google_last_poll_token = next_token
-        prop.updated_at = datetime.now(timezone.utc)
-        session.add(prop)
-        session.commit()
-
-    return data.get("items", [])
 
 
 # ── Google Tasks polling (pull) ───────────────────────────────────────────
@@ -295,13 +247,6 @@ def run_sync_cycle(session: Session) -> None:
 
     session.commit()
 
-    # ── Poll: eventos novos do Calendar ──
-    try:
-        events = poll_calendar(token, prop, session)
-        _import_calendar_events(events, session)
-    except Exception as e:
-        logger.error("Erro ao fazer polling do Calendar: %s", e)
-
     # ── Poll: tarefas novas criadas diretamente no Google Tasks ──
     try:
         poll_tasks(token, prop, session)
@@ -314,43 +259,3 @@ def run_sync_cycle(session: Session) -> None:
         prop.google_last_sync_at = now
         session.add(prop)
         session.commit()
-
-
-def _import_calendar_events(events: list[dict], session: Session) -> None:
-    """Cria tarefas pending_review para eventos novos do Calendar."""
-    for event in events:
-        calendar_event_id = event.get("id")
-        if not calendar_event_id:
-            continue
-
-        # Ignora eventos cancelados
-        if event.get("status") == "cancelled":
-            continue
-
-        # Verifica se já existe tarefa com esse calendar_event_id (ativa ou deletada)
-        existing = session.exec(
-            select(Task).where(Task.calendar_event_id == calendar_event_id)
-        ).first()
-        if existing:
-            continue
-
-        title = event.get("summary", "(sem título)")
-        start = event.get("start", {})
-        start_dt_str = start.get("dateTime") or start.get("date")
-        scheduled_start: datetime | None = None
-        if start_dt_str:
-            try:
-                scheduled_start = datetime.fromisoformat(start_dt_str.replace("Z", "+00:00"))
-            except ValueError:
-                pass
-
-        task = Task(
-            title=title,
-            executor=Executor.NAO_ATRIBUIDO,
-            scheduled_window_start=scheduled_start,
-            is_pending_review=True,
-            calendar_event_id=calendar_event_id,
-        )
-        session.add(task)
-
-    session.commit()

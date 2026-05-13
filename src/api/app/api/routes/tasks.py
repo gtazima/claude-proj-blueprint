@@ -47,7 +47,6 @@ def _to_read(task) -> TaskRead:
         updated_at=task.updated_at,
         is_pending_review=task.is_pending_review,
         duration_minutes=task.duration_minutes,
-        calendar_event_id=task.calendar_event_id,
     )
 
 

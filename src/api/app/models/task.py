@@ -57,7 +57,6 @@ class Task(SQLModel, table=True):
     # Google sync
     is_pending_review: bool = Field(default=False)
     duration_minutes: int | None = Field(default=None, ge=1)
-    calendar_event_id: str | None = Field(default=None, max_length=200, index=True)
     google_task_id: str | None = Field(default=None, max_length=200)
 
     @property

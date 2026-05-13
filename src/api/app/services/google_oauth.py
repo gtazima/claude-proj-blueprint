@@ -22,7 +22,6 @@ GOOGLE_USERINFO_URL = "https://www.googleapis.com/oauth2/v3/userinfo"
 
 SCOPES = [
     "https://www.googleapis.com/auth/tasks",
-    "https://www.googleapis.com/auth/calendar.readonly",
     "openid",
     "email",
 ]
@@ -121,7 +120,6 @@ def disconnect(session: Session) -> None:
     prop.google_connected_email = None
     prop.google_tasks_list_id = None
     prop.google_memory_list_id = None
-    prop.google_last_poll_token = None
     prop.google_last_sync_at = None
     prop.updated_at = datetime.now(timezone.utc)
     session.add(prop)

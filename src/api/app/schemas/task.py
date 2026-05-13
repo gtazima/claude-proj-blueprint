@@ -69,7 +69,6 @@ class TaskRead(BaseModel):
     updated_at: datetime
     is_pending_review: bool
     duration_minutes: int | None
-    calendar_event_id: str | None
 
 
 class TaskWithPriority(TaskRead):
