@@ -52,7 +52,7 @@ def _task_to_google_payload(task: Task) -> dict:
         payload["due"] = due.strftime("%Y-%m-%dT%H:%M:%S.000Z")
     payload["notes"] = (
         (task.description or "") +
-        f"\n[executor: {task.executor.value}]"
+        f"\n[executor: {task.executor}]"
     ).strip()
     return payload
 
