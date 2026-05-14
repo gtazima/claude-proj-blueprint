@@ -10,7 +10,7 @@ from uuid import uuid4
 
 import pytest
 
-from app.models.task import Executor, Task
+from app.models.task import Task
 from app.services.prioritization import (
     calculate_priority_score,
     dependency_score,

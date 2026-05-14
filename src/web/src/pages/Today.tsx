@@ -2,22 +2,23 @@ import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import clsx from "clsx";
 import { tasksApi, type TaskWithPriority, type Task } from "../api/tasks.ts";
+import { useUndo } from "../contexts/UndoContext.tsx";
 import {
-  sortedTypeTags, sortedCultureTags,
-  incrementTagFrequency, buildTitle,
-  TYPE_TAGS, CULTURE_TAGS,
+  sortedByFrequency, incrementTagFrequency, buildTitle,
 } from "../constants/activityTags.ts";
+import { useActivityTypes, useCultures } from "../hooks/useConfig.ts";
 import KanbanView, { type KanbanMode, type DateDelta } from "../components/KanbanView.tsx";
 import CompletedTaskRow from "../components/CompletedTaskRow.tsx";
 import CreateTaskModal from "../components/CreateTaskModal.tsx";
 import ReviewCard from "../components/ReviewCard.tsx";
+import AgendaSettingsDrawer from "../components/AgendaSettingsDrawer.tsx";
 
 const LAST_EXECUTOR_KEY = "last_executor";
 const MODE_KEY          = "kanban_mode";
 const DELTA_KEY         = "kanban_delta";
 
-function readLastExecutor(): "produtor" | "pai" | "funcionario" | "nao_atribuido" {
-  return (localStorage.getItem(LAST_EXECUTOR_KEY) as "produtor" | "pai" | "funcionario" | "nao_atribuido" | null) ?? "produtor";
+function readLastExecutor(): string {
+  return localStorage.getItem(LAST_EXECUTOR_KEY) ?? "produtor";
 }
 function readMode(): KanbanMode {
   return (localStorage.getItem(MODE_KEY) as KanbanMode | null) ?? "type";
@@ -41,7 +42,7 @@ const DATE_DELTAS: { value: DateDelta; label: string }[] = [
 ];
 
 function completedAsActive(tasks: Task[]): TaskWithPriority[] {
-  return tasks.map((t) => ({ ...t, priority_score: 0, can_undo_completion: !t.completion_locked }));
+  return tasks.map((t) => ({ ...t, priority_score: 0 }));
 }
 
 export default function TodayPage() {
@@ -50,7 +51,14 @@ export default function TodayPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [createType, setCreateType] = useState<string | undefined>(undefined);
   const [showCompleted, setShowCompleted] = useState(false);
+  const [showSettings, setShowSettings]   = useState(false);
   const qc = useQueryClient();
+  const { undo, canUndo } = useUndo();
+
+  const { data: activityTypes = [] } = useActivityTypes();
+  const { data: cultures = [] }      = useCultures();
+  const typeNames    = activityTypes.map((t) => t.name);
+  const cultureNames = cultures.map((c) => c.name);
 
   const changeMode  = (m: KanbanMode) => { setMode(m);  localStorage.setItem(MODE_KEY, m); };
   const changeDelta = (d: DateDelta)  => { setDelta(d); localStorage.setItem(DELTA_KEY, String(d)); };
@@ -100,8 +108,12 @@ export default function TodayPage() {
 
   const quickCreate = useMutation({
     mutationFn: (tag: string) => {
-      const isType    = (TYPE_TAGS as readonly string[]).includes(tag);
-      const isCulture = (CULTURE_TAGS as readonly string[]).includes(tag);
+      const isType    = typeNames.length > 0
+        ? typeNames.some((t) => t.toLowerCase() === tag.toLowerCase())
+        : true;
+      const isCulture = cultureNames.length > 0
+        ? cultureNames.some((c) => c.toLowerCase() === tag.toLowerCase())
+        : false;
       return tasksApi.create({
         title: buildTitle("", isType ? tag : null, isCulture ? tag : null) || tag,
         executor: readLastExecutor(),
@@ -111,21 +123,23 @@ export default function TodayPage() {
     onSuccess: (_data, tag) => { incrementTagFrequency(tag); invalidate(); },
   });
 
-  // Keyboard shortcut N → new task
+  // Keyboard shortcuts
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if (["INPUT", "TEXTAREA", "SELECT"].includes((e.target as HTMLElement).tagName)) return;
-      if (e.key === "n" || e.key === "N") { e.preventDefault(); openCreate(); }
-      if (e.key === "Escape") setShowCreate(false);
+      const inInput = ["INPUT", "TEXTAREA", "SELECT"].includes((e.target as HTMLElement).tagName);
+      if (e.ctrlKey && e.key === "z") { e.preventDefault(); if (canUndo) undo(); return; }
+      if (e.ctrlKey && (e.key === "n" || e.key === "N")) { e.preventDefault(); openCreate(); return; }
+      if (e.key === "Escape") { setShowCreate(false); return; }
+      if (!inInput && (e.key === "n" || e.key === "N")) { e.preventDefault(); openCreate(); }
     };
     document.addEventListener("keydown", handler);
     return () => document.removeEventListener("keydown", handler);
-  }, []);
+  }, [undo, canUndo]);
 
   const openCreate = (type?: string) => { setCreateType(type); setShowCreate(true); };
 
-  const typeTags    = sortedTypeTags();
-  const cultureTags = sortedCultureTags();
+  const typeTags    = sortedByFrequency(typeNames.length > 0 ? typeNames : []);
+  const cultureTags = sortedByFrequency(cultureNames.length > 0 ? cultureNames : []);
 
   const typeChipClass = clsx(
     "shrink-0 cursor-grab active:cursor-grabbing rounded border px-2 py-0.5 text-xs select-none transition-colors",
@@ -169,13 +183,22 @@ export default function TodayPage() {
           </div>
 
           {/* Nova button */}
-          <button onClick={() => openCreate()} title="Nova tarefa (N)"
+          <button onClick={() => openCreate()} title="Nova tarefa (Ctrl+N)"
             className="flex items-center gap-1.5 bg-green-600 text-white text-xs font-medium px-3 py-1.5 rounded-md hover:bg-green-700 transition-colors shrink-0">
             <svg className="h-3.5 w-3.5" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.5">
               <path d="M8 3v10M3 8h10" strokeLinecap="round" />
             </svg>
             Nova
-            <kbd className="ml-1 opacity-60 font-mono text-[10px] bg-green-700 rounded px-1">N</kbd>
+            <kbd className="ml-1 opacity-60 font-mono text-[10px] bg-green-700 rounded px-1">Ctrl+N</kbd>
+          </button>
+
+          {/* Settings */}
+          <button onClick={() => setShowSettings(true)} title="Configurações da Agenda"
+            className="flex items-center justify-center h-7 w-7 rounded-md border border-stone-200 text-stone-400 hover:text-stone-700 hover:border-stone-300 transition-colors shrink-0">
+            <svg className="h-3.5 w-3.5" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <path d="M8 10a2 2 0 100-4 2 2 0 000 4z" />
+              <path d="M13.3 10a1.3 1.3 0 001.7 1.8l-1 1.7a1.3 1.3 0 00-2.2.5H6.2a1.3 1.3 0 00-2.2-.5l-1-1.7A1.3 1.3 0 004.7 10a1.3 1.3 0 00-1.7-1.8l1-1.7A1.3 1.3 0 006.2 6h3.6a1.3 1.3 0 002.2-.5l1 1.7A1.3 1.3 0 0011.3 10z" strokeLinecap="round" />
+            </svg>
           </button>
         </div>
 
@@ -321,6 +344,8 @@ export default function TodayPage() {
           }}
         />
       )}
+
+      {showSettings && <AgendaSettingsDrawer onClose={() => setShowSettings(false)} />}
     </div>
   );
 }

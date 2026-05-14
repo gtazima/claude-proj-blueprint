@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import clsx from "clsx";
-import { tasksApi, type Executor, type Task, type TaskWithPriority } from "../api/tasks.ts";
+import { tasksApi, type Task, type TaskWithPriority } from "../api/tasks.ts";
+import { useUndo } from "../contexts/UndoContext.tsx";
 import {
-  sortedTypeTags, sortedCultureTags,
-  incrementTagFrequency, buildTitle, parseTitle,
-  TYPE_TAGS, CULTURE_TAGS,
+  sortedByFrequency, incrementTagFrequency, buildTitle, parseTitle,
 } from "../constants/activityTags.ts";
+import { usePeople, useActivityTypes, useCultures } from "../hooks/useConfig.ts";
 
 interface Props {
   onClose:       () => void;
@@ -17,20 +17,10 @@ interface Props {
   initialTask?:  Task;
 }
 
-const EXECUTORS: { value: Executor; label: string; abbr: string; color: string }[] = [
-  { value: "produtor",      label: "Produtor",       abbr: "P", color: "green"  },
-  { value: "pai",           label: "Pai",             abbr: "P", color: "blue"   },
-  { value: "funcionario",   label: "Funcionário",     abbr: "F", color: "purple" },
-  { value: "nao_atribuido", label: "Não Atribuído",   abbr: "?", color: "stone"  },
-];
-
 const LAST_EXECUTOR_KEY = "last_executor";
-function readLastExecutor(): Executor {
-  return (localStorage.getItem(LAST_EXECUTOR_KEY) as Executor | null) ?? "produtor";
+function readLastExecutor(): string {
+  return localStorage.getItem(LAST_EXECUTOR_KEY) ?? "produtor";
 }
-
-function isTypeTag(tag: string)    { return (TYPE_TAGS    as readonly string[]).includes(tag); }
-function isCultureTag(tag: string) { return (CULTURE_TAGS as readonly string[]).includes(tag); }
 
 function toLocalDateKey(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -39,18 +29,27 @@ function toLocalDateKey(d: Date): string {
 export default function CreateTaskModal({ onClose, onSuccess, initialType, initialDate, task, initialTask }: Props) {
   const editSource = task ?? initialTask;
   const isEdit  = !!task;
-  const parsed  = editSource ? parseTitle(editSource.title) : null;
+  const { push: pushUndo } = useUndo();
+
+  const { data: people = [] }        = usePeople();
+  const { data: activityTypes = [] } = useActivityTypes();
+  const { data: cultures = [] }      = useCultures();
+
+  const typeNames    = activityTypes.map((t) => t.name);
+  const cultureNames = cultures.map((c) => c.name);
+
+  const parsed  = editSource ? parseTitle(editSource.title, typeNames, cultureNames) : null;
 
   const [baseTitle, setBaseTitle]   = useState(parsed?.base ?? "");
   const [description, setDescription] = useState(editSource?.description ?? "");
-  const [executor, setExecutor]     = useState<Executor>(editSource?.executor ?? readLastExecutor());
+  const [executor, setExecutor]     = useState<string>(editSource?.executor ?? readLastExecutor());
   const [selType, setSelType]       = useState<string | null>(
     editSource ? (parsed?.type ?? null)
-               : (initialType && isTypeTag(initialType) ? initialType : null)
+               : (initialType && typeNames.includes(initialType) ? initialType : null)
   );
   const [selCulture, setSelCulture] = useState<string | null>(
     editSource ? (parsed?.culture ?? null)
-               : (initialType && isCultureTag(initialType) ? initialType : null)
+               : (initialType && cultureNames.includes(initialType) ? initialType : null)
   );
   const [windowEnd, setWindowEnd]   = useState(
     editSource?.scheduled_window_end
@@ -61,8 +60,9 @@ export default function CreateTaskModal({ onClose, onSuccess, initialType, initi
   const [depIds, setDepIds]         = useState<string[]>(editSource?.dependency_ids ?? []);
   const [showDeps, setShowDeps]     = useState(false);
 
-  const typeTags    = sortedTypeTags();
-  const cultureTags = sortedCultureTags();
+  const typeTags    = sortedByFrequency(typeNames.length > 0 ? typeNames : activityTypes.map((t) => t.name));
+  const cultureTags = sortedByFrequency(cultureNames.length > 0 ? cultureNames : cultures.map((c) => c.name));
+  const activePeople = people.filter((p) => p.is_active);
 
   const { data: allTasks = [] } = useQuery({
     queryKey: ["tasks", "today"],
@@ -109,6 +109,20 @@ export default function CreateTaskModal({ onClose, onSuccess, initialType, initi
       if (!isEdit) localStorage.setItem(LAST_EXECUTOR_KEY, executor);
       if (selType)    incrementTagFrequency(selType);
       if (selCulture) incrementTagFrequency(selCulture);
+      if (isEdit && task) {
+        pushUndo({
+          type: "update",
+          taskId: task.id,
+          previous: {
+            title: task.title,
+            description: task.description,
+            executor: task.executor,
+            scheduled_window_end: task.scheduled_window_end,
+            dependency_ids: task.dependency_ids,
+          },
+          label: `"${task.title}" editada`,
+        });
+      }
       onSuccess(data?.id);
     },
   });
@@ -119,7 +133,13 @@ export default function CreateTaskModal({ onClose, onSuccess, initialType, initi
   const titlePreview = buildTitle(baseTitle.trim() || "…", selType, selCulture);
 
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+    <div
+      className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"
+      onKeyDown={(e) => {
+        if (e.key === "Escape") { e.stopPropagation(); onClose(); }
+        if (e.ctrlKey && e.key === "Enter" && canSubmit) { e.preventDefault(); save.mutate(); }
+      }}
+    >
       <div className="bg-white rounded-xl shadow-xl w-full max-w-md flex flex-col max-h-[90vh]">
         <div className="p-5 overflow-y-auto flex-1 space-y-4">
           <div className="flex items-baseline justify-between">
@@ -134,34 +154,27 @@ export default function CreateTaskModal({ onClose, onSuccess, initialType, initi
           </div>
 
           {/* Executor */}
-          <div className="flex gap-2">
-            {EXECUTORS.map((opt) => {
-              const active = executor === opt.value;
+          <div className="flex gap-2 flex-wrap">
+            {activePeople.map((p) => {
+              const active = executor === p.slug;
               return (
-                <button key={opt.value} type="button" onClick={() => setExecutor(opt.value)}
+                <button key={p.slug} type="button" onClick={() => setExecutor(p.slug)}
                   className={clsx(
-                    "flex-1 flex flex-col items-center gap-1 rounded-lg border py-2.5 transition-all text-xs",
-                    active && opt.color === "green"  && "border-green-500 bg-green-50",
-                    active && opt.color === "blue"   && "border-blue-500  bg-blue-50",
-                    active && opt.color === "purple" && "border-purple-500 bg-purple-50",
-                    active && opt.color === "stone"  && "border-stone-400 bg-stone-50",
-                    !active && "border-stone-200 hover:border-stone-300"
-                  )}>
+                    "flex-1 min-w-[72px] flex flex-col items-center gap-1 rounded-lg border py-2.5 transition-all text-xs",
+                    active ? "border-[color:var(--person-color)] bg-stone-50" : "border-stone-200 hover:border-stone-300"
+                  )}
+                  style={{ "--person-color": p.color } as React.CSSProperties}
+                >
                   <span className={clsx(
-                    "h-6 w-6 rounded-full flex items-center justify-center text-[11px] font-bold text-white",
-                    active && opt.color === "green"  && "bg-green-500",
-                    active && opt.color === "blue"   && "bg-blue-500",
-                    active && opt.color === "purple" && "bg-purple-500",
-                    active && opt.color === "stone"  && "bg-stone-400",
-                    !active && "bg-stone-300"
-                  )}>{opt.abbr}</span>
-                  <span className={clsx("font-medium",
-                    active && opt.color === "green"  && "text-green-800",
-                    active && opt.color === "blue"   && "text-blue-800",
-                    active && opt.color === "purple" && "text-purple-800",
-                    active && opt.color === "stone"  && "text-stone-700",
-                    !active && "text-stone-500"
-                  )}>{opt.label}</span>
+                    "h-6 w-6 rounded-full flex items-center justify-center text-[11px] font-bold text-white"
+                  )}
+                    style={{ background: active ? p.color : "#D1D5DB" }}
+                  >
+                    {p.name.charAt(0).toUpperCase()}
+                  </span>
+                  <span className={clsx("font-medium", active ? "text-stone-800" : "text-stone-500")}>
+                    {p.name}
+                  </span>
                 </button>
               );
             })}

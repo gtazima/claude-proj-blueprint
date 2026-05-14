@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import clsx from "clsx";
+import { useUndo } from "../contexts/UndoContext.tsx";
 import { tasksApi, type TaskWithPriority } from "../api/tasks.ts";
 import {
   parseTitle, buildTitle,
@@ -213,6 +214,7 @@ function getColPalette(col: string, mode: KanbanMode): ColPalette {
 
 export default function KanbanView({ tasks, mode, dateDelta, onAddTask }: Props) {
   const qc = useQueryClient();
+  const { push: pushUndo } = useUndo();
 
   const { grouped, columns: rawColumns } =
     mode === "culture" ? groupByCulture(tasks)
@@ -239,7 +241,6 @@ export default function KanbanView({ tasks, mode, dateDelta, onAddTask }: Props)
   // ── Task move between columns ────────────────────────────────────────────
   const moveTask = useMutation({
     mutationFn: async ({ taskId, targetCol }: { taskId: string; targetCol: string }) => {
-      // Special columns don't accept drops
       if (["__overdue__", "__future__", "__nodate__", "__other__"].includes(targetCol)) return;
 
       const task = tasks.find((t) => t.id === taskId);
@@ -249,22 +250,31 @@ export default function KanbanView({ tasks, mode, dateDelta, onAddTask }: Props)
         const newType = TYPE_TAGS.find((t) => t === targetCol) ?? null;
         const p = parseTitle(task.title);
         if (p.type === newType) return;
-        return tasksApi.update(taskId, { title: buildTitle(p.base || task.title, newType, p.culture) });
+        const previous = { title: task.title };
+        await tasksApi.update(taskId, { title: buildTitle(p.base || task.title, newType, p.culture) });
+        return { taskId, previous, label: `Tarefa movida para ${targetCol}` };
       }
 
       if (mode === "culture") {
         const newCulture = CULTURE_TAGS.find((c) => c === targetCol) ?? null;
         const p = parseTitle(task.title);
         if (p.culture === newCulture) return;
-        return tasksApi.update(taskId, { title: buildTitle(p.base || task.title, p.type, newCulture) });
+        const previous = { title: task.title };
+        await tasksApi.update(taskId, { title: buildTitle(p.base || task.title, p.type, newCulture) });
+        return { taskId, previous, label: `Tarefa movida para ${targetCol}` };
       }
 
       if (mode === "date") {
         const newEnd = new Date(targetCol + "T23:59:00").toISOString();
-        return tasksApi.update(taskId, { scheduled_window_end: newEnd });
+        const previous = { scheduled_window_end: task.scheduled_window_end };
+        await tasksApi.update(taskId, { scheduled_window_end: newEnd });
+        return { taskId, previous, label: "Data da tarefa alterada" };
       }
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["tasks", "today"] }),
+    onSuccess: (data) => {
+      void qc.invalidateQueries({ queryKey: ["tasks", "today"] });
+      if (data) pushUndo({ type: "update", taskId: data.taskId, previous: data.previous, label: data.label });
+    },
   });
 
   // ── Column reorder ───────────────────────────────────────────────────────

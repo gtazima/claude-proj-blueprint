@@ -1,10 +1,10 @@
-export type Executor = "produtor" | "pai" | "funcionario" | "nao_atribuido";
+export type Executor = string;
 
 export interface Task {
   id: string;
   title: string;
   description: string | null;
-  executor: Executor;
+  executor: string;
   scheduled_window_start: string | null;
   scheduled_window_end: string | null;
   financial_score: number;
@@ -12,7 +12,6 @@ export interface Task {
   deferral_count: number;
   last_deferral_reason: string | null;
   completed_at: string | null;
-  completion_locked: boolean;
   repeatedly_deferred: boolean;
   created_at: string;
   updated_at: string;
@@ -22,7 +21,6 @@ export interface Task {
 
 export interface TaskWithPriority extends Task {
   priority_score: number;
-  can_undo_completion: boolean;
 }
 
 export interface CreateTaskPayload {
@@ -113,4 +111,7 @@ export const tasksApi = {
 
   softDelete: (id: string) =>
     request<void>(`/tasks/${id}`, { method: "DELETE" }),
+
+  restore: (id: string) =>
+    request<Task>(`/tasks/${id}/restore`, { method: "POST" }),
 };

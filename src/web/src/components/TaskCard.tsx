@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import clsx from "clsx";
-import { tasksApi, type TaskWithPriority, type Executor } from "../api/tasks.ts";
+import { tasksApi, type TaskWithPriority } from "../api/tasks.ts";
 import { parseTitle, buildTitle, TYPE_TAGS } from "../constants/activityTags.ts";
+import { useUndo } from "../contexts/UndoContext.tsx";
+import { usePeople, useActivityTypes } from "../hooks/useConfig.ts";
 import PriorityBadge from "./PriorityBadge.tsx";
 import CreateTaskModal from "./CreateTaskModal.tsx";
 import DeferModal from "./DeferModal.tsx";
@@ -23,42 +25,47 @@ function cardPriorityClass(score: number, isDragOver: boolean): string {
   return "border-l-[3px] border-l-stone-200 bg-white";
 }
 
-const EXECUTOR_LABEL: Record<Executor, string> = {
-  produtor:      "Produtor",
-  pai:           "Pai",
-  funcionario:   "Funcionário",
-  nao_atribuido: "Não Atribuído",
-};
-
-const ALL_EXECUTORS: Executor[] = ["produtor", "pai", "funcionario", "nao_atribuido"];
-
 export default function TaskCard({ task, auxiliaryLabel, auxiliaryVariant = "neutral", displayTitle }: Props) {
+  const { data: people = [] } = usePeople();
+  const { data: activityTypes = [] } = useActivityTypes();
+  const typeNames = activityTypes.map((t) => t.name);
+  const executorName = people.find((p) => p.slug === task.executor)?.name ?? task.executor;
+  const otherPeople  = people.filter((p) => p.slug !== task.executor && p.is_active);
   const [showEdit, setShowEdit]   = useState(false);
   const [showDefer, setShowDefer] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   const qc = useQueryClient();
+  const { push: pushUndo } = useUndo();
 
   const invalidate = () => {
     void qc.invalidateQueries({ queryKey: ["tasks", "today"] });
     void qc.invalidateQueries({ queryKey: ["tasks", "completed-today"] });
   };
 
-  const complete    = useMutation({ mutationFn: () => tasksApi.complete(task.id), onSuccess: invalidate });
-  const uncomplete  = useMutation({
-    mutationFn: () => tasksApi.uncomplete(task.id),
-    onSuccess: invalidate,
-    onError: (err: Error & { status?: number }) => {
-      if (err.status === 409) alert("A janela de 5 minutos para desfazer expirou.");
+  const complete = useMutation({
+    mutationFn: () => tasksApi.complete(task.id),
+    onSuccess: () => {
+      pushUndo({ type: "complete", taskId: task.id, label: `"${task.title}" concluída` });
+      invalidate();
     },
   });
-  const remove   = useMutation({ mutationFn: () => tasksApi.softDelete(task.id), onSuccess: invalidate });
+  const uncomplete = useMutation({ mutationFn: () => tasksApi.uncomplete(task.id), onSuccess: invalidate });
+  const remove = useMutation({
+    mutationFn: () => tasksApi.softDelete(task.id),
+    onSuccess: () => {
+      pushUndo({ type: "delete", taskId: task.id, label: `"${task.title}" deletada` });
+      invalidate();
+    },
+  });
 
   const applyTag = useMutation({
     mutationFn: (tag: string) => {
-      const p      = parseTitle(task.title);
-      const isType = (TYPE_TAGS as readonly string[]).includes(tag);
+      const p      = parseTitle(task.title, typeNames);
+      const isType = typeNames.length > 0
+        ? typeNames.some((t) => t.toLowerCase() === tag.toLowerCase())
+        : (TYPE_TAGS as readonly string[]).includes(tag);
       // Replace only the matching dimension; preserve the other dimension and base
       const newTitle = buildTitle(
         p.base,
@@ -71,21 +78,29 @@ export default function TaskCard({ task, auxiliaryLabel, auxiliaryVariant = "neu
   });
 
   const changeExecutor = useMutation({
-    mutationFn: (executor: Executor) => tasksApi.update(task.id, { executor }),
-    onSuccess: invalidate,
+    mutationFn: (slug: string) => tasksApi.update(task.id, { executor: slug }),
+    onSuccess: (_data, newSlug) => {
+      const newName = people.find((p) => p.slug === newSlug)?.name ?? newSlug;
+      pushUndo({ type: "update", taskId: task.id, previous: { executor: task.executor }, label: `Executor alterado para ${newName}` });
+      invalidate();
+    },
   });
 
   const isCompleted = task.completed_at !== null;
   const isLoading   = complete.isPending || uncomplete.isPending || remove.isPending ||
                       applyTag.isPending || changeExecutor.isPending;
-  const otherExecutors = ALL_EXECUTORS.filter((e) => e !== task.executor);
   const depCount = task.dependency_ids.length;
 
   return (
     <>
       <div
+        tabIndex={0}
         draggable={!isCompleted}
-        onDoubleClick={() => { if (!isCompleted) setShowEdit(true); }}
+        onDoubleClick={() => setShowEdit(true)}
+        onKeyDown={(e) => {
+          if (e.key === "Delete" && !isCompleted) { e.preventDefault(); remove.mutate(); }
+          if (e.key === "Enter") { e.preventDefault(); setShowEdit(true); }
+        }}
         onDragStart={(e) => {
           e.dataTransfer.setData("task-id", task.id);
           e.dataTransfer.effectAllowed = "move";
@@ -145,7 +160,7 @@ export default function TaskCard({ task, auxiliaryLabel, auxiliaryVariant = "neu
 
             <div className="mt-1 flex items-center gap-2 text-[11px] text-stone-400 flex-wrap">
               <PriorityBadge score={task.priority_score} />
-              <span>{EXECUTOR_LABEL[task.executor]}</span>
+              <span>{executorName}</span>
               {task.scheduled_window_end && (
                 <span>
                   {new Date(task.scheduled_window_end).toLocaleDateString("pt-BR", {
@@ -194,14 +209,14 @@ export default function TaskCard({ task, auxiliaryLabel, auxiliaryVariant = "neu
             {/* Hover suggestions */}
             {isHovered && !isCompleted && (
               <div className="mt-2 pt-1.5 border-t border-stone-100 flex items-center gap-1.5 flex-wrap">
-                {otherExecutors.map((ex) => (
+                {otherPeople.map((p) => (
                   <button
-                    key={ex}
+                    key={p.slug}
                     onMouseDown={(e) => e.stopPropagation()}
-                    onClick={(e) => { e.stopPropagation(); changeExecutor.mutate(ex); }}
+                    onClick={(e) => { e.stopPropagation(); changeExecutor.mutate(p.slug); }}
                     className="rounded border border-stone-200 bg-stone-50 px-1.5 py-0.5 text-[11px] text-stone-500 hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700 transition-colors"
                   >
-                    → {EXECUTOR_LABEL[ex]}
+                    → {p.name}
                   </button>
                 ))}
                 <button

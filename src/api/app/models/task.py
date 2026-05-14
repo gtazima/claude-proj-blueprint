@@ -1,23 +1,13 @@
 from datetime import datetime, timezone
-from enum import Enum
-from typing import Optional
 from uuid import UUID, uuid4
 
 from sqlalchemy import Column
-from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.types import JSON
 from sqlmodel import Field, SQLModel
 
 
 def utcnow() -> datetime:
     return datetime.now(timezone.utc)
-
-
-class Executor(str, Enum):
-    PRODUTOR = "produtor"
-    PAI = "pai"
-    FUNCIONARIO = "funcionario"
-    NAO_ATRIBUIDO = "nao_atribuido"
 
 
 class Task(SQLModel, table=True):
@@ -33,7 +23,7 @@ class Task(SQLModel, table=True):
     title: str = Field(min_length=1, max_length=200, index=True)
     description: str | None = Field(default=None, max_length=2000)
 
-    executor: Executor = Field(default=Executor.NAO_ATRIBUIDO, index=True)
+    executor: str = Field(default="nao_atribuido", max_length=60, index=True)
 
     scheduled_window_start: datetime | None = Field(default=None, index=True)
     scheduled_window_end: datetime | None = Field(default=None, index=True)

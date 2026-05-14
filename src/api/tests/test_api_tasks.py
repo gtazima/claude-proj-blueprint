@@ -90,11 +90,10 @@ class TestTodayEndpoint:
         scores = [i["priority_score"] for i in items]
         assert scores == sorted(scores, reverse=True)
 
-    def test_includes_priority_score_and_undo_flag(self, client: TestClient):
+    def test_includes_priority_score(self, client: TestClient):
         client.post("/api/tasks", json=_create_payload(title="x"))
         items = client.get("/api/tasks/today").json()
         assert "priority_score" in items[0]
-        assert "can_undo_completion" in items[0]
 
 
 # --------------------------------------------------------------------------
@@ -124,19 +123,12 @@ class TestCompletionEndpoints:
         titles = [t["title"] for t in response.json()]
         assert "ABC" in titles
 
-    def test_undo_after_lock_returns_409(self, client: TestClient, task_service):
+    def test_undo_always_works_regardless_of_time(self, client: TestClient):
         created = client.post("/api/tasks", json=_create_payload()).json()
-        task_id = UUID(created["id"])
-        client.post(f"/api/tasks/{task_id}/complete")
-
-        # Simula lock direto no banco
-        task = task_service.get(task_id)
-        task.completion_locked = True
-        task_service.session.add(task)
-        task_service.session.commit()
-
-        response = client.post(f"/api/tasks/{task_id}/uncomplete")
-        assert response.status_code == 409
+        client.post(f"/api/tasks/{created['id']}/complete")
+        response = client.post(f"/api/tasks/{created['id']}/uncomplete")
+        assert response.status_code == 200
+        assert response.json()["completed_at"] is None
 
 
 # --------------------------------------------------------------------------
@@ -218,3 +210,15 @@ class TestSoftDelete:
 
         response = client.get(f"/api/tasks/{task_id}")
         assert response.status_code == 404
+
+    def test_restore_recovers_deleted_task(self, client: TestClient):
+        created = client.post("/api/tasks", json=_create_payload(title="Restaurável")).json()
+        task_id = created["id"]
+
+        client.delete(f"/api/tasks/{task_id}")
+        response = client.post(f"/api/tasks/{task_id}/restore")
+        assert response.status_code == 200
+        assert response.json()["title"] == "Restaurável"
+
+        response = client.get(f"/api/tasks/{task_id}")
+        assert response.status_code == 200

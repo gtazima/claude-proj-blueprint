@@ -1,5 +1,6 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
+import { UndoProvider } from "./contexts/UndoContext.tsx";
 import Layout from "./components/Layout.tsx";
 import LoginPage from "./pages/Login.tsx";
 import AgendaPage from "./pages/Agenda.tsx";
@@ -21,6 +22,7 @@ function ProtectedRoutes() {
   if (!session) return <Navigate to="/login" replace />;
 
   return (
+    <UndoProvider>
     <Layout>
       <Routes>
         <Route path="/"                               element={<Navigate to="/tarefas" replace />} />
@@ -31,6 +33,7 @@ function ProtectedRoutes() {
         <Route path="/configuracoes/google/callback"  element={<GoogleCallbackPage />} />
       </Routes>
     </Layout>
+    </UndoProvider>
   );
 }
 

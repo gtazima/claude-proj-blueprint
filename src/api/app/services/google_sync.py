@@ -5,12 +5,15 @@ Roda como worker assíncrono em background (asyncio.create_task no lifespan).
 
 import logging
 from datetime import datetime, timezone
+from uuid import UUID
 
 import httpx
 from sqlmodel import Session, select
 
+from app.core.config import settings
+from app.db.session import engine
 from app.models.property_settings import PropertySettings
-from app.models.task import Executor, Task
+from app.models.task import Task
 from app.services.google_oauth import GoogleOAuthError, get_valid_access_token
 
 logger = logging.getLogger(__name__)
@@ -25,30 +28,17 @@ def _tasks_headers(token: str) -> dict:
 
 
 def _ensure_task_lists(token: str, prop: PropertySettings, session: Session) -> None:
-    """Cria as listas 'AgroecologIA' e 'memória' se ainda não existem."""
-    changed = False
-
+    """Cria a lista 'AgroecologIA' se ainda não existe."""
     if not prop.google_tasks_list_id:
         resp = httpx.post(f"{TASKS_BASE}/users/@me/lists",
                           headers=_tasks_headers(token),
                           json={"title": "AgroecologIA"}, timeout=10)
         if resp.status_code == 200:
             prop.google_tasks_list_id = resp.json()["id"]
-            changed = True
-
-    if not prop.google_memory_list_id:
-        resp = httpx.post(f"{TASKS_BASE}/users/@me/lists",
-                          headers=_tasks_headers(token),
-                          json={"title": "memória"}, timeout=10)
-        if resp.status_code == 200:
-            prop.google_memory_list_id = resp.json()["id"]
-            changed = True
-
-    if changed:
-        prop.updated_at = datetime.now(timezone.utc)
-        session.add(prop)
-        session.commit()
-        session.refresh(prop)
+            prop.updated_at = datetime.now(timezone.utc)
+            session.add(prop)
+            session.commit()
+            session.refresh(prop)
 
 
 def _task_to_google_payload(task: Task) -> dict:
@@ -99,18 +89,12 @@ def delete_task(google_task_id: str, token: str, list_id: str) -> None:
     )
 
 
-def complete_task(google_task_id: str, token: str, list_id: str, fallback_list_id: str | None = None) -> None:
-    resp = httpx.patch(
+def complete_task(google_task_id: str, token: str, list_id: str) -> None:
+    httpx.patch(
         f"{TASKS_BASE}/lists/{list_id}/tasks/{google_task_id}",
         headers=_tasks_headers(token),
         json={"status": "completed"}, timeout=10,
     )
-    if resp.status_code == 404 and fallback_list_id:
-        httpx.patch(
-            f"{TASKS_BASE}/lists/{fallback_list_id}/tasks/{google_task_id}",
-            headers=_tasks_headers(token),
-            json={"status": "completed"}, timeout=10,
-        )
 
 
 # ── Google Tasks polling (pull) ───────────────────────────────────────────
@@ -166,7 +150,7 @@ def poll_tasks(token: str, prop: PropertySettings, session: Session) -> None:
         session.add(Task(
             title=title,
             description=notes,
-            executor=Executor.NAO_ATRIBUIDO,
+            executor="nao_atribuido",
             scheduled_window_start=scheduled,
             is_pending_review=True,
             google_task_id=google_task_id,
@@ -192,8 +176,8 @@ def run_sync_cycle(session: Session) -> None:
     _ensure_task_lists(token, prop, session)
     session.refresh(prop)
 
-    if not prop.google_tasks_list_id or not prop.google_memory_list_id:
-        logger.error("Listas do Google Tasks não encontradas após _ensure_task_lists")
+    if not prop.google_tasks_list_id:
+        logger.error("Lista AgroecologIA não encontrada após _ensure_task_lists")
         return
 
     now = datetime.now(timezone.utc)
@@ -212,15 +196,13 @@ def run_sync_cycle(session: Session) -> None:
 
     tasks = session.exec(stmt).all()
 
+    list_id = prop.google_tasks_list_id
     for task in tasks:
         try:
             if task.completed_at:
                 if task.google_task_id:
-                    primary = prop.google_tasks_list_id if task.scheduled_window_end else prop.google_memory_list_id
-                    fallback = prop.google_memory_list_id if task.scheduled_window_end else prop.google_tasks_list_id
-                    complete_task(task.google_task_id, token, primary, fallback_list_id=fallback)
+                    complete_task(task.google_task_id, token, list_id)
             else:
-                list_id = prop.google_tasks_list_id if task.scheduled_window_end else prop.google_memory_list_id
                 push_task(task, token, list_id, session)
         except Exception as e:
             logger.error("Erro ao sincronizar tarefa %s: %s", task.id, e)
@@ -237,7 +219,6 @@ def run_sync_cycle(session: Session) -> None:
     deleted_tasks = session.exec(deleted_stmt).all()
     for task in deleted_tasks:
         if task.google_task_id:
-            list_id = prop.google_tasks_list_id if task.scheduled_window_end else prop.google_memory_list_id
             try:
                 delete_task(task.google_task_id, token, list_id)
                 task.google_task_id = None
@@ -259,3 +240,42 @@ def run_sync_cycle(session: Session) -> None:
         prop.google_last_sync_at = now
         session.add(prop)
         session.commit()
+
+
+# ── Sync imediato (fire-and-forget via BackgroundTasks) ───────────────────
+
+def _sync_single_task(session: Session, task_id: UUID) -> None:
+    """Sincroniza uma única tarefa — chamado após cada write."""
+    prop = session.get(PropertySettings, "default")
+    if not prop or not prop.google_access_token or not prop.google_tasks_list_id:
+        return
+
+    task = session.get(Task, task_id)
+    if not task or task.is_pending_review:
+        return
+
+    token = get_valid_access_token(session)
+    list_id = prop.google_tasks_list_id
+
+    if task.deleted_at:
+        if task.google_task_id:
+            delete_task(task.google_task_id, token, list_id)
+            task.google_task_id = None
+            session.add(task)
+            session.commit()
+    elif task.completed_at:
+        if task.google_task_id:
+            complete_task(task.google_task_id, token, list_id)
+    else:
+        push_task(task, token, list_id, session)
+
+
+def push_task_now(task_id: UUID) -> None:
+    """BackgroundTask: sync imediato. Falha é silenciosa — worker de 60s reconcilia."""
+    if not settings.feature_google_sync_enabled:
+        return
+    try:
+        with Session(engine) as session:
+            _sync_single_task(session, task_id)
+    except Exception:
+        logger.warning("Sync imediato falhou para tarefa %s — worker vai reconciliar", task_id)

@@ -10,15 +10,13 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.models.task import Executor
-
 
 class TaskCreate(BaseModel):
     """Payload para criar uma tarefa."""
 
     title: str = Field(min_length=1, max_length=200)
     description: str | None = Field(default=None, max_length=2000)
-    executor: Executor = Executor.NAO_ATRIBUIDO
+    executor: str = Field(default="nao_atribuido", max_length=60)
     scheduled_window_start: datetime | None = None
     scheduled_window_end: datetime | None = None
     financial_score: int = Field(default=0, ge=0, le=5)
@@ -31,7 +29,7 @@ class TaskUpdate(BaseModel):
 
     title: str | None = Field(default=None, min_length=1, max_length=200)
     description: str | None = Field(default=None, max_length=2000)
-    executor: Executor | None = None
+    executor: str | None = Field(default=None, max_length=60)
     scheduled_window_start: datetime | None = None
     scheduled_window_end: datetime | None = None
     financial_score: int | None = Field(default=None, ge=0, le=5)
@@ -55,7 +53,7 @@ class TaskRead(BaseModel):
     id: UUID
     title: str
     description: str | None
-    executor: Executor
+    executor: str
     scheduled_window_start: datetime | None
     scheduled_window_end: datetime | None
     financial_score: int
@@ -63,7 +61,6 @@ class TaskRead(BaseModel):
     deferral_count: int
     last_deferral_reason: str | None
     completed_at: datetime | None
-    completion_locked: bool
     repeatedly_deferred: bool
     created_at: datetime
     updated_at: datetime
@@ -75,4 +72,3 @@ class TaskWithPriority(TaskRead):
     """Tarefa enriquecida com o score de priorização computado."""
 
     priority_score: int
-    can_undo_completion: bool

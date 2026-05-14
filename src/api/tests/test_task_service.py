@@ -2,9 +2,8 @@
 Testes da camada de serviço de tarefas (TaskService).
 
 Cobre:
-- CRUD básico (create, get, update, soft_delete)
-- Conclusão com janela de undo (ADR-002)
-- Lock de conclusão expirada
+- CRUD básico (create, get, update, soft_delete, restore)
+- Conclusão e reabertura sem restrição de janela
 - Adiamento com justificativa (PRD AC-14 a AC-17)
 - Listagens (today, completed_today, upcoming) com priorização correta
 """
@@ -14,11 +13,8 @@ from uuid import UUID, uuid4
 
 import pytest
 
-from app.core.config import settings
-from app.models.task import Executor
 from app.schemas.task import TaskCreate, TaskDeferRequest, TaskUpdate
 from app.services.tasks import (
-    CompletionLockedError,
     TaskNotFoundError,
     TaskService,
 )
@@ -30,7 +26,7 @@ def _make_create(
     scheduled_window_end: datetime | None = None,
     scheduled_window_start: datetime | None = None,
     financial_score: int = 0,
-    executor: Executor = Executor.PRODUTOR,
+    executor: str = "produtor",
     dependency_ids: list[UUID] | None = None,
 ) -> TaskCreate:
     return TaskCreate(
@@ -56,7 +52,6 @@ class TestCreate:
         assert task.title == "Aplicar calcário"
         assert task.deferral_count == 0
         assert task.completed_at is None
-        assert task.completion_locked is False
         assert task.deleted_at is None
         assert task.version == 1
 
@@ -105,8 +100,24 @@ class TestUpdate:
         assert updated.financial_score == 3
 
 
+class TestSoftDeleteAndRestore:
+    def test_soft_delete_hides_task(self, task_service: TaskService):
+        task = task_service.create(_make_create())
+        task_service.soft_delete(task.id)
+        with pytest.raises(TaskNotFoundError):
+            task_service.get(task.id)
+
+    def test_restore_makes_task_visible_again(self, task_service: TaskService):
+        task = task_service.create(_make_create(title="Restaurável"))
+        task_service.soft_delete(task.id)
+        restored = task_service.restore(task.id)
+        assert restored.deleted_at is None
+        fetched = task_service.get(task.id)
+        assert fetched.title == "Restaurável"
+
+
 # --------------------------------------------------------------------------
-# Conclusão e janela de undo
+# Conclusão — sem restrição de janela de undo
 # --------------------------------------------------------------------------
 
 
@@ -114,9 +125,7 @@ class TestComplete:
     def test_marks_task_as_completed(self, task_service: TaskService):
         task = task_service.create(_make_create())
         completed = task_service.complete(task.id)
-
         assert completed.completed_at is not None
-        assert completed.completion_locked is False
 
     def test_completing_already_completed_is_idempotent(
         self, task_service: TaskService
@@ -128,51 +137,26 @@ class TestComplete:
 
 
 class TestUndoCompletion:
-    def test_undoes_within_window(self, task_service: TaskService):
+    def test_undoes_completion(self, task_service: TaskService):
         task = task_service.create(_make_create())
         task_service.complete(task.id)
         undone = task_service.undo_completion(task.id)
         assert undone.completed_at is None
 
-    def test_locked_completion_blocks_undo(self, task_service: TaskService):
+    def test_undo_works_regardless_of_elapsed_time(self, task_service: TaskService):
         task = task_service.create(_make_create())
         completed = task_service.complete(task.id)
-        # Simula expiração da janela
-        completed.completion_locked = True
+        # Simula tarefa concluída há muito tempo
+        completed.completed_at = datetime.now(timezone.utc) - timedelta(days=7)
         task_service.session.add(completed)
         task_service.session.commit()
-
-        with pytest.raises(CompletionLockedError):
-            task_service.undo_completion(task.id)
+        undone = task_service.undo_completion(task.id)
+        assert undone.completed_at is None
 
     def test_undo_on_non_completed_task_is_noop(self, task_service: TaskService):
         task = task_service.create(_make_create())
         result = task_service.undo_completion(task.id)
         assert result.completed_at is None
-
-
-class TestLockExpiredCompletions:
-    def test_locks_only_expired_completions(self, task_service: TaskService):
-        # Tarefa concluída agora — dentro da janela, NÃO deve ser lockada
-        recent = task_service.create(_make_create(title="recente"))
-        task_service.complete(recent.id)
-
-        # Tarefa concluída há mais de 5 minutos — deve ser lockada
-        old = task_service.create(_make_create(title="antiga"))
-        task_service.complete(old.id)
-        old.completed_at = datetime.now(timezone.utc) - timedelta(
-            seconds=settings.completion_undo_window_seconds + 60
-        )
-        task_service.session.add(old)
-        task_service.session.commit()
-
-        locked_count = task_service.lock_expired_completions()
-        assert locked_count == 1
-
-        recent_after = task_service.get(recent.id)
-        old_after = task_service.get(old.id)
-        assert recent_after.completion_locked is False
-        assert old_after.completion_locked is True
 
 
 # --------------------------------------------------------------------------
@@ -198,7 +182,6 @@ class TestDefer:
 
         assert deferred.deferral_count == 1
         assert deferred.last_deferral_reason == "vai chover até sexta"
-        # Compara timestamps tolerando perda de timezone do SQLite
         assert deferred.scheduled_window_start.replace(tzinfo=None) == new_window.replace(tzinfo=None)
 
     def test_repeatedly_deferred_after_three_defers(self, task_service: TaskService):
@@ -241,32 +224,23 @@ class TestListToday:
     ):
         now = datetime.now(timezone.utc)
 
-        # Não-atribuída sem janela — entra
-        no_window = task_service.create(_make_create(title="sem janela"))
-
-        # Janela aberta (start no passado) — entra
-        active = task_service.create(
+        task_service.create(_make_create(title="sem janela"))
+        task_service.create(
             _make_create(
                 title="ativa",
                 scheduled_window_start=now - timedelta(hours=1),
                 scheduled_window_end=now + timedelta(days=1),
             )
         )
-
-        # Janela futura (start daqui a uma semana) — NÃO entra na lista de hoje
-        future = task_service.create(
+        task_service.create(
             _make_create(
                 title="futura",
                 scheduled_window_start=now + timedelta(days=7),
                 scheduled_window_end=now + timedelta(days=10),
             )
         )
-
-        # Concluída — NÃO entra
         completed = task_service.create(_make_create(title="concluída"))
         task_service.complete(completed.id)
-
-        # Soft-deleted — NÃO entra
         deleted = task_service.create(_make_create(title="deletada"))
         task_service.soft_delete(deleted.id)
 
@@ -275,31 +249,20 @@ class TestListToday:
 
         assert "ativa" in titles
         assert "sem janela" in titles
-        assert "futura" not in titles
+        assert "futura" in titles  # aparece na coluna __future__ do Kanban
         assert "concluída" not in titles
         assert "deletada" not in titles
 
     def test_orders_by_priority_score(self, task_service: TaskService):
         now = datetime.now(timezone.utc)
 
-        # Critical: janela fechada (timing_score = 100)
-        critical = task_service.create(
-            _make_create(
-                title="critical",
-                scheduled_window_end=now - timedelta(hours=1),
-            )
+        task_service.create(
+            _make_create(title="critical", scheduled_window_end=now - timedelta(hours=1))
         )
-
-        # Soon: janela em 1 dia (timing_score = 90)
-        soon = task_service.create(
-            _make_create(
-                title="soon",
-                scheduled_window_end=now + timedelta(hours=12),
-            )
+        task_service.create(
+            _make_create(title="soon", scheduled_window_end=now + timedelta(hours=12))
         )
-
-        # Plain: sem janela
-        plain = task_service.create(_make_create(title="plain"))
+        task_service.create(_make_create(title="plain"))
 
         result = task_service.list_today()
         titles = [t.title for t in result]
@@ -312,25 +275,19 @@ class TestListUpcoming:
     def test_returns_tasks_within_window(self, task_service: TaskService):
         now = datetime.now(timezone.utc)
 
-        in_3_days = task_service.create(
-            _make_create(
-                title="3 dias",
-                scheduled_window_start=now + timedelta(days=3),
-            )
+        task_service.create(
+            _make_create(title="3 dias", scheduled_window_start=now + timedelta(days=3))
         )
-        in_30_days = task_service.create(
-            _make_create(
-                title="30 dias",
-                scheduled_window_start=now + timedelta(days=30),
-            )
+        task_service.create(
+            _make_create(title="30 dias", scheduled_window_start=now + timedelta(days=30))
         )
-        no_window = task_service.create(_make_create(title="sem janela"))
+        task_service.create(_make_create(title="sem janela"))
 
         result_7d = task_service.list_upcoming(days=7)
         titles_7d = [t.title for t in result_7d]
         assert "3 dias" in titles_7d
         assert "30 dias" not in titles_7d
-        assert "sem janela" not in titles_7d  # sem start não entra em upcoming
+        assert "sem janela" not in titles_7d
 
         result_60d = task_service.list_upcoming(days=60)
         titles_60d = [t.title for t in result_60d]

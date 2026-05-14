@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { tasksApi, type Task } from "../api/tasks.ts";
+import { useUndo } from "../contexts/UndoContext.tsx";
 
 interface Props {
   task: Task;
@@ -7,6 +8,7 @@ interface Props {
 
 export default function CompletedTaskRow({ task }: Props) {
   const qc = useQueryClient();
+  const { push: pushUndo } = useUndo();
 
   const invalidate = () => {
     void qc.invalidateQueries({ queryKey: ["tasks", "today"] });
@@ -15,11 +17,9 @@ export default function CompletedTaskRow({ task }: Props) {
 
   const uncomplete = useMutation({
     mutationFn: () => tasksApi.uncomplete(task.id),
-    onSuccess: invalidate,
-    onError: (err: Error & { status?: number }) => {
-      if (err.status === 409) {
-        alert("A janela de 5 minutos para desfazer expirou. Conclusão bloqueada.");
-      }
+    onSuccess: () => {
+      pushUndo({ type: "complete", taskId: task.id, label: `"${task.title}" reaberta` });
+      invalidate();
     },
   });
 
@@ -27,7 +27,7 @@ export default function CompletedTaskRow({ task }: Props) {
     <button
       onClick={() => uncomplete.mutate()}
       disabled={uncomplete.isPending}
-      title="Clique para desfazer conclusão"
+      title="Clique para reabrir"
       className="flex items-center gap-1.5 rounded border border-stone-200 bg-stone-50 px-2 py-1 text-xs text-stone-400 hover:border-green-300 hover:bg-green-50 hover:text-green-700 disabled:opacity-50 transition-colors max-w-xs"
     >
       <svg className="h-3 w-3 text-green-500 shrink-0" viewBox="0 0 12 12" fill="none">
