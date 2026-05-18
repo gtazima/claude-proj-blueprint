@@ -29,10 +29,16 @@ class FieldNoteService:
         self.session.refresh(note)
         return note
 
-    def create_from_task(self, task: Task) -> FieldNote:
-        content = f"Tarefa concluída: {task.title}"
-        if task.deferral_count > 0 and task.last_deferral_reason:
-            content += f"\nAdiada {task.deferral_count}x — último motivo: {task.last_deferral_reason}"
+    def create_from_task(self, task: Task, observation: str | None = None) -> FieldNote:
+        if observation:
+            content = observation.strip()
+            content += f"\n— {task.title}"
+            if task.deferral_count > 0 and task.last_deferral_reason:
+                content += f"\nAdiada {task.deferral_count}× — {task.last_deferral_reason}"
+        else:
+            content = f"Tarefa concluída: {task.title}"
+            if task.deferral_count > 0 and task.last_deferral_reason:
+                content += f"\nAdiada {task.deferral_count}× — último motivo: {task.last_deferral_reason}"
         note = FieldNote(
             content=content,
             entry_type="task_completed",

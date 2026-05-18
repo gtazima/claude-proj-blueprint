@@ -6,6 +6,7 @@ import { parseTitle, buildTitle, TYPE_TAGS } from "../constants/activityTags.ts"
 import { useUndo } from "../contexts/UndoContext.tsx";
 import { usePeople, useActivityTypes } from "../hooks/useConfig.ts";
 import PriorityBadge from "./PriorityBadge.tsx";
+import CompleteModal from "./CompleteModal.tsx";
 import CreateTaskModal from "./CreateTaskModal.tsx";
 import DeferModal from "./DeferModal.tsx";
 
@@ -31,8 +32,9 @@ export default function TaskCard({ task, auxiliaryLabel, auxiliaryVariant = "neu
   const typeNames = activityTypes.map((t) => t.name);
   const executorName = people.find((p) => p.slug === task.executor)?.name ?? task.executor;
   const otherPeople  = people.filter((p) => p.slug !== task.executor && p.is_active);
-  const [showEdit, setShowEdit]   = useState(false);
-  const [showDefer, setShowDefer] = useState(false);
+  const [showEdit, setShowEdit]       = useState(false);
+  const [showDefer, setShowDefer]     = useState(false);
+  const [showComplete, setShowComplete] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
@@ -45,8 +47,9 @@ export default function TaskCard({ task, auxiliaryLabel, auxiliaryVariant = "neu
   };
 
   const complete = useMutation({
-    mutationFn: () => tasksApi.complete(task.id),
+    mutationFn: (observation?: string) => tasksApi.complete(task.id, observation),
     onSuccess: () => {
+      setShowComplete(false);
       pushUndo({ type: "complete", taskId: task.id, label: `"${task.title}" concluída` });
       invalidate();
     },
@@ -136,7 +139,7 @@ export default function TaskCard({ task, auxiliaryLabel, auxiliaryVariant = "neu
           {/* Checkbox */}
           <button
             onMouseDown={(e) => e.stopPropagation()}
-            onClick={(e) => { e.stopPropagation(); isCompleted ? uncomplete.mutate() : complete.mutate(); }}
+            onClick={(e) => { e.stopPropagation(); isCompleted ? uncomplete.mutate() : setShowComplete(true); }}
             className={clsx(
               "mt-0.5 h-4 w-4 shrink-0 rounded border-2 flex items-center justify-center transition-colors",
               isCompleted ? "bg-green-500 border-green-500 text-white" : "border-stone-300 hover:border-green-400"
@@ -258,6 +261,14 @@ export default function TaskCard({ task, auxiliaryLabel, auxiliaryVariant = "neu
           task={task}
           onClose={() => setShowDefer(false)}
           onSuccess={() => { setShowDefer(false); invalidate(); }}
+        />
+      )}
+      {showComplete && (
+        <CompleteModal
+          task={task}
+          isPending={complete.isPending}
+          onClose={() => setShowComplete(false)}
+          onComplete={(obs) => complete.mutate(obs)}
         />
       )}
     </>

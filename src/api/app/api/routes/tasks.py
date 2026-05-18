@@ -11,6 +11,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, R
 
 from app.api.deps import get_task_service
 from app.schemas.task import (
+    TaskCompletePayload,
     TaskCreate,
     TaskDeferRequest,
     TaskRead,
@@ -144,9 +145,11 @@ def complete_task(
     task_id: UUID,
     background_tasks: BackgroundTasks,
     service: TaskService = Depends(get_task_service),
+    payload: TaskCompletePayload | None = None,
 ) -> TaskRead:
     try:
-        task = service.complete(task_id)
+        obs = payload.observation if payload else None
+        task = service.complete(task_id, observation=obs)
     except TaskNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e)) from e
     background_tasks.add_task(push_task_now, task.id)

@@ -106,7 +106,13 @@ class TaskService:
     # Conclusão — sem restrição de janela de undo (decisão 2026-05-13)
     # ------------------------------------------------------------------
 
-    def complete(self, task_id: UUID, *, device_id: str | None = None) -> Task:
+    def complete(
+        self,
+        task_id: UUID,
+        *,
+        device_id: str | None = None,
+        observation: str | None = None,
+    ) -> Task:
         task = self.get(task_id)
         if task.completed_at is not None:
             return task
@@ -115,9 +121,8 @@ class TaskService:
         self.session.add(task)
         self.session.commit()
         self.session.refresh(task)
-        # Caderno de Campo AC-6: entrada automática ao concluir tarefa
         from app.services.field_notes import FieldNoteService
-        FieldNoteService(self.session).create_from_task(task)
+        FieldNoteService(self.session).create_from_task(task, observation=observation)
         return task
 
     def undo_completion(self, task_id: UUID, *, device_id: str | None = None) -> Task:

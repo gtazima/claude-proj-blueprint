@@ -72,3 +72,9 @@ class TaskWithPriority(TaskRead):
     """Tarefa enriquecida com o score de priorização computado."""
 
     priority_score: int
+
+
+class TaskCompletePayload(BaseModel):
+    """Payload opcional ao concluir tarefa — observação para o caderno de campo."""
+
+    observation: str | None = Field(default=None, max_length=2000)

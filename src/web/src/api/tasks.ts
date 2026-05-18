@@ -91,8 +91,11 @@ export const tasksApi = {
   create: (payload: CreateTaskPayload) =>
     request<Task>("/tasks", { method: "POST", body: JSON.stringify(payload) }),
 
-  complete: (id: string) =>
-    request<Task>(`/tasks/${id}/complete`, { method: "POST" }),
+  complete: (id: string, observation?: string) =>
+    request<Task>(`/tasks/${id}/complete`, {
+      method: "POST",
+      ...(observation !== undefined ? { body: JSON.stringify({ observation }) } : {}),
+    }),
 
   uncomplete: (id: string) =>
     request<Task>(`/tasks/${id}/uncomplete`, { method: "POST" }),
