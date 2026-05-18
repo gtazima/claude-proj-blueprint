@@ -253,6 +253,7 @@ Job em background:
 - **Security:** WebSocket precisa de autenticação no handshake (token JWT no query string ou primeiro frame). Validar `device_id` em cada operação contra a tabela de sessões.
 
 ## References
-- ADR-002 — modelo conceitual do sync offline
-- ADR-008 — estratégia de testes (define cobertura mínima do sync)
-- ADR-009 — autenticação (provê `device_id` autenticado)
+
+- [[adr-002-sync-offline]] — modelo conceitual LWW + operation log que esta ADR implementa
+- [[adr-008-estrategia-de-testes]] — operation log exige ≥95% de cobertura; edge cases enumerados explicitamente
+- [[adr-009-autenticacao]] — provê `device_id` autenticado e validação de sessão de dispositivo

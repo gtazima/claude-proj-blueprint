@@ -1,63 +1,66 @@
 # Module: Testing Strategy
 
-> Test pyramid, QA, and quality strategy.
-
-## How to enable
-1. Fill in the sections below
-2. The `.claude/skills/testing/SKILL.md` skill already references this module
-
 ## Test pyramid
-[SPEC] Define proportions and tools:
 
 ```
-         /  E2E  \          [SPEC]% — [tool]
+         /  E2E  \          ~5%  — não definido para MVP
         /----------\
-       / Integration \      [SPEC]% — [tool]
+       / Integration \      ~25% — Pytest (backend) / Vitest (frontend)
       /----------------\
-     /      Unit        \   [SPEC]% — [tool]
+     /      Unit        \   ~70% — Pytest (backend) / Vitest (frontend)
     /--------------------\
 ```
 
+Pirâmide assimétrica: base unitária pesada, E2E mínimo até o produto estabilizar.
+
 ## Tools
+
 | Layer | Backend | Frontend |
-|-------|---------|----------|
-| Unit | [SPEC] | [SPEC] |
-| Integration | [SPEC] | [SPEC] |
-| E2E | [SPEC] | [SPEC] Playwright / Cypress |
-| Performance | [SPEC] locust / k6 | [SPEC] Lighthouse CI |
-| Security | [SPEC] bandit / semgrep | [SPEC] npm audit |
+|---|---|---|
+| Unit | Pytest | Vitest |
+| Integration | Pytest + SQLAlchemy test session | Vitest + MSW (mock de API) |
+| E2E | — (não configurado no MVP) | — |
+| Performance | — (não configurado no MVP) | — |
+| Security | Ruff (linting) + revisão manual | npm audit |
 
 ## Patterns
-- Naming: `describe` + `it` + AAA (Arrange, Act, Assert)
-- Fixtures: [SPEC] [factory pattern / fixtures / builders]
-- Mocks: [SPEC] [mock framework, usage policy]
-- Test data: [SPEC] [generated / fixtures / snapshot]
+
+- **Naming:** `test_<what>_<condition>_<expected>` (Python) / `describe + it + AAA` (TypeScript)
+- **Fixtures:** factory functions no conftest.py (backend); objetos inline nos testes (frontend)
+- **Mocks:** banco de dados real em testes de integração — nunca mockar o banco (lição aprendida no ecossistema anterior). Mockar apenas serviços externos (Google Tasks API, Supabase Auth)
+- **Test data:** fixtures geradas por factory — sem snapshots
 
 ## Coverage
-- Global minimum: [SPEC]%
-- Per-PR minimum (delta): [SPEC]%
-- Allowed exclusions: [SPEC] [migrations, config, generated code]
-- Coverage tool: [SPEC] [coverage.py / istanbul / c8]
+
+- **Global mínimo:** 70%
+- **Delta por PR:** sem requisito — velocidade não deve ser bloqueada por UI difícil de testar
+- **Exclusões permitidas:** migrations, arquivos de config, código gerado, adaptadores de IA (`src/ai/adapters/`)
+- **Ferramenta:** `coverage.py` (backend via `pytest-cov`) / `@vitest/coverage-v8` (frontend)
 
 ## Tests in CI
-| Stage | Trigger | Timeout | Required for merge |
-|-------|---------|---------|-------------------|
-| Unit | Every push | [SPEC] min | Yes |
-| Integration | Every PR | [SPEC] min | Yes |
-| E2E | PR to main | [SPEC] min | [SPEC] |
-| Performance | Release | [SPEC] min | [SPEC] |
-| Security scan | Daily + PR | [SPEC] min | Yes |
+
+| Stage | Trigger | Requerido para merge |
+|---|---|---|
+| Unit + Integration | Todo push | Sim |
+| Security scan (npm audit + ruff) | Todo PR | Sim |
+| E2E | N/A — MVP | N/A |
 
 ## Test environments
-| Environment | Data | Purpose |
-|-------------|------|---------|
-| Local | Fixtures/mocks | Development |
-| CI | Ephemeral containers | Automated validation |
-| Staging | Anonymized data | Manual validation and E2E |
 
-## Manual QA
-[SPEC] Define when needed:
-- [ ] Pre-deploy smoke test
-- [ ] Pre-release regression test
-- [ ] Quarterly exploratory testing
-- [ ] Accessibility audit per release
+| Environment | Dados | Propósito |
+|---|---|---|
+| Local | SQLite em memória / fixtures | Desenvolvimento |
+| CI | PostgreSQL efêmero (GitHub Actions service) | Validação automatizada |
+
+## Cenário offline obrigatório
+
+Toda feature que afeta sincronização deve ter teste explícito simulando ausência de conexão.
+Esse cenário é crítico por causa do ADR-002 (sync offline LWW) e do uso em campo.
+
+## Definition of Done (por feature)
+
+- [ ] Testes unitários para lógica de negócio nova
+- [ ] Teste de integração para endpoints novos
+- [ ] Cenário offline testado se a feature toca sync
+- [ ] `pnpm test` e `uv run pytest` passando antes do commit
+- [ ] Coverage não caiu abaixo de 70% global

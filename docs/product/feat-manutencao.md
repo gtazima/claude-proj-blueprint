@@ -90,3 +90,9 @@ Construir o histórico de manutenção de todos os equipamentos e estruturas da 
 - [ ] Seed inicial: produtor cadastra manualmente os equipamentos e estruturas da propriedade na primeira configuração
 - [ ] Rollback: sem dependências críticas de outros módulos — pode ser desativado sem impacto na Agenda ou Culturas
 - [ ] Validação: revisar com o produtor os intervalos de manutenção configurados antes de ativar alertas automáticos
+
+## Relacionados
+
+- [[feat-agenda]] — alertas de manutenção vencida geram tarefas automáticas na ordem do dia
+- [[feat-compras]] — alertas preventivos com peças identificadas alimentam a lista de compras proativa
+- [[adr-013-notificacoes-multicanal]] — alertas de manutenção atrasada entregues via push/e-mail/WhatsApp

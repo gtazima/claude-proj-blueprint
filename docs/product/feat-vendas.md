@@ -97,3 +97,10 @@ Centralizar a gestão dos clientes atuais e criar a infraestrutura para o ciclo 
 - [ ] Geração de conteúdo: funciona desde o primeiro uso, mas melhora com histórico — qualidade inicial pode ser básica
 - [ ] Rollback: módulo independente — desativar não afeta outros módulos
 - [ ] Validação: testar geração de conteúdo com os primeiros 5 produtos antes de usar em produção
+
+## Relacionados
+
+- [[adr-004-camada-ia-plugavel]] — geração de conteúdo para posts e descrições (AC-8 a AC-12)
+- [[adr-015-moderacao-conteudo-ia]] — guardrails obrigatórios para conteúdo publicado; AC-9, AC-10, AC-11
+- [[feat-caderno-de-campo]] — histórico de colheitas alimenta contexto para geração de conteúdo
+- [[feat-culturas]] — disponibilidade de estoque vem dos ciclos de colheita das culturas

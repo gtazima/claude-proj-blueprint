@@ -151,6 +151,7 @@ banks:
 - **Financeiro (feat-financeiro.md):** AC-1 a AC-4 dependem diretamente deste ADR.
 
 ## References
-- PRD: `docs/product/feat-financeiro.md`
-- Referência de código: `old/fazenda-dashboard/modules/gmail.py` (lógica OAuth reutilizável)
-- Regulamentação: Resolução Conjunta BCB/CMN nº 1, de 4 de maio de 2020 (Open Finance)
+
+- [[feat-financeiro]] — AC-1 a AC-4 dependem diretamente deste ADR
+- [[feat-gmail-financeiro]] — especializa este ADR para extração de e-mails bancários
+- [[adr-009-autenticacao]] — tokens OAuth Gmail criptografados conforme política deste ADR

@@ -129,6 +129,8 @@ Conflitos resolvidos automaticamente ficam acessíveis em log de auditoria por 3
 - **Culturas (feat-culturas.md):** colheitas e atualizações de ciclo offline dependem deste ADR.
 
 ## References
-- PRD: `docs/product/feat-agenda.md`
-- PRD: `docs/product/feat-caderno-de-campo.md`
-- PRD: `docs/product/feat-culturas.md`
+
+- [[adr-010-implementacao-sync-offline]] — implementação técnica deste ADR (Dexie, custom sync engine)
+- [[feat-agenda]] — AC-6 e AC-19 dependem deste ADR
+- [[feat-caderno-de-campo]] — AC-5 depende deste ADR
+- [[feat-culturas]] — colheitas e atualizações de ciclo offline

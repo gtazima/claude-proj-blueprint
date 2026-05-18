@@ -105,3 +105,10 @@ Integrar sensores e dispositivos de automação da propriedade ao AgroecologIA, 
 - [ ] MVP parcial aceitável: módulo pode ser entregue primeiro apenas com dados climáticos externos (sem hardware físico) e evoluir conforme os sensores forem instalados
 - [ ] Rollback: módulo independente — desativar remove dados em tempo real do Mapa mas não afeta outros módulos
 - [ ] Validação: testar com um único sensor antes de integrar todos os dispositivos
+
+## Relacionados
+
+- [[feat-mapa]] — sensores e dispositivos aparecem como marcadores no mapa com dados em tempo real
+- [[feat-manutencao]] — alertas de sensor offline geram itens de manutenção preventiva
+- [[adr-013-notificacoes-multicanal]] — alertas de sensor (offline, threshold) entregues via push/e-mail/WhatsApp
+- [[adr-002-sync-offline]] — leituras de sensores seguem modelo append-only; séries temporais aguardam ADR-007

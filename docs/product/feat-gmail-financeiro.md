@@ -128,3 +128,10 @@ Reduzir a zero a entrada manual de transações que já chegaram por e-mail — 
 - Taxa de edição antes da confirmação (meta: <20% — indica que a extração está correta na maioria dos casos)
 - Redução de transações inseridas manualmente no módulo Financeiro após ativação da feature (avaliado por comparação de período antes/depois)
 - Tempo médio de processamento da fila de revisão pelo produtor (meta: <30 segundos por item — valida que o fluxo de confirmação não cria fricção excessiva)
+
+## Relacionados
+
+- [[feat-financeiro]] — alimenta este módulo com transações extraídas de e-mails bancários
+- [[adr-005-integracao-bancaria]] — contexto da estratégia OFX/CSV + e-mail; código OAuth reutilizável de `old/fazenda-dashboard`
+- [[adr-004-camada-ia-plugavel]] — extração via IA para e-mails sem parser estruturado
+- [[adr-009-autenticacao]] — tokens OAuth Gmail armazenados com criptografia conforme este ADR

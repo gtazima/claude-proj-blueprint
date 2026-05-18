@@ -204,8 +204,9 @@ Quando o provedor padrão está indisponível (sem internet ou falha de API):
 - **Vendas:** geração de conteúdo usa esta camada. AC-8 a AC-12 dependem deste ADR.
 
 ## References
-- PRD: `docs/product/feat-caderno-de-campo.md`
-- PRD: `docs/product/feat-financeiro.md`
-- PRD: `docs/product/feat-vendas.md`
-- PRD: `docs/product/feat-agenda.md`
-- Implementação base: `src/ai/provider.py`
+
+- [[adr-011-provedor-ia-capacity-planning]] — provedor default atual (DeepSeek), custo/usuário, capacity planning
+- [[feat-caderno-de-campo]] — pipeline de processamento usa esta camada (AC-9)
+- [[feat-financeiro]] — classificação de transações (AC-5 e AC-7)
+- [[feat-vendas]] — geração de conteúdo (AC-8 a AC-12)
+- [[feat-agenda]] — criação de tarefa por linguagem natural

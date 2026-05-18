@@ -1,122 +1,112 @@
 # API Conventions
 
-[SPEC] Define your project's API conventions. This module pairs with the `api-designer` skill.
-
 ## API Style
-[SPEC] Choose: REST | GraphQL | gRPC | mixed
+
+REST.
 
 ## Base URL
-[SPEC] e.g., `/api/v1`
+
+`/api/v1`
+
+> **Migração pendente:** o backend atual usa `/api` sem versionamento. Todas as rotas e o frontend devem ser atualizados para `/api/v1` na próxima sessão de refatoração. Ver CLAUDE.md Gotchas para rastrear o status.
 
 ## Authentication
-[SPEC] Choose: JWT | API key | OAuth2 | Session | none
-- Token location: [SPEC] (Authorization header, cookie, query param)
-- Token format: [SPEC] (Bearer {token}, X-API-Key: {key})
+
+JWT Bearer via Supabase Auth.
+
+- Header: `Authorization: Bearer {jwt}`
+- Validação: JWKS endpoint (`{supabase_url}/auth/v1/.well-known/jwks.json`) — RS256/ES256
+- Cache do JWKS: 300s (implementado em `app/api/deps.py`)
+- Todos os endpoints requerem autenticação exceto `/health`
 
 ## Versioning
-Strategy: [SPEC] (URL prefix `/v1`, header `Accept-Version`, query `?version=1`)
-See also: `docs/specs/versioning/`
+
+URL prefix: `/api/v1`. Sem header de versão.
 
 ## Request/Response Format
 
 ### Content type
-`application/json` (default)
+
+`application/json` em todos os endpoints.
 
 ### Pagination
-[SPEC] Choose and fill in:
 
-**Option A — Offset-based:**
+Offset-based:
+
 ```json
-GET /api/v1/items?page=1&limit=20
+GET /api/v1/tasks?page=1&limit=50
 
 {
   "data": [...],
   "pagination": {
     "page": 1,
-    "limit": 20,
-    "total": 150,
-    "totalPages": 8
+    "limit": 50,
+    "total": 143,
+    "total_pages": 3
   }
 }
 ```
 
-**Option B — Cursor-based:**
-```json
-GET /api/v1/items?cursor=abc123&limit=20
-
-{
-  "data": [...],
-  "pagination": {
-    "cursor": "def456",
-    "hasMore": true
-  }
-}
-```
+Defaults: `page=1`, `limit=50`. Máximo por requisição: `limit=200`.
 
 ### Filtering & sorting
+
 ```
-GET /api/v1/items?status=active&sort=created_at&order=desc
+GET /api/v1/tasks?status=pending&sort=priority_score&order=desc
 ```
 
 ### Error format
+
 ```json
 {
   "error": {
     "code": "VALIDATION_ERROR",
-    "message": "Human-readable description",
+    "message": "Descrição legível por humano",
     "details": [
-      {
-        "field": "email",
-        "message": "Invalid email format"
-      }
+      { "field": "title", "message": "Deve ter entre 1 e 200 caracteres" }
     ]
   }
 }
 ```
 
 ### Standard error codes
+
 | Code | HTTP | Meaning |
 |---|---|---|
-| `VALIDATION_ERROR` | 400 | Request body/params failed validation |
-| `UNAUTHORIZED` | 401 | Missing or invalid authentication |
-| `FORBIDDEN` | 403 | Authenticated but not authorized |
-| `NOT_FOUND` | 404 | Resource does not exist |
-| `CONFLICT` | 409 | Resource state conflict (e.g., duplicate) |
-| `RATE_LIMITED` | 429 | Too many requests |
-| `INTERNAL_ERROR` | 500 | Unexpected server error |
+| `VALIDATION_ERROR` | 400 | Body/params falharam na validação |
+| `UNAUTHORIZED` | 401 | Auth ausente ou inválida |
+| `FORBIDDEN` | 403 | Autenticado mas sem permissão |
+| `NOT_FOUND` | 404 | Recurso não existe |
+| `CONFLICT` | 409 | Conflito de estado (ex: duplicate) |
+| `RATE_LIMITED` | 429 | Muitas requisições |
+| `INTERNAL_ERROR` | 500 | Erro inesperado no servidor |
 
 ## Naming conventions
-- Resources: plural nouns (`/users`, `/orders`, `/products`)
-- Actions: use HTTP methods, not verbs in URL (`POST /orders`, not `/createOrder`)
-- Nested resources: max 2 levels (`/users/{id}/orders`, not `/users/{id}/orders/{id}/items`)
-- IDs: [SPEC] (UUID v4, nanoid, auto-increment)
-- Dates: ISO 8601 (`2026-04-01T12:00:00Z`)
-- Enums: lowercase snake_case (`order_status`, not `OrderStatus`)
 
-## Rate limiting
-[SPEC] Define per-endpoint or global:
-- Public endpoints: [SPEC] requests per minute
-- Authenticated endpoints: [SPEC] requests per minute
-- Heavy operations: [SPEC] requests per minute
-- Response headers: `X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-Reset`
+- Recursos: substantivos no plural (`/tasks`, `/config/executors`)
+- Ações: via HTTP methods, não verbos na URL (`POST /tasks`, não `/createTask`)
+- Aninhamento: máximo 2 níveis
+- **IDs: UUID v4** (formato `{uuid}` no path, ex: `/api/v1/tasks/{task_id}`)
+- Datas: ISO 8601 com timezone (`2026-04-01T12:00:00Z`)
+- Enums e campos: `snake_case` (`financial_score`, `scheduled_window_end`)
 
 ## CORS
-[SPEC] Define allowed origins, methods, headers:
+
 ```
-Allowed origins: [SPEC]
+Allowed origins: ["*"]  # protegido pela camada de auth (Supabase JWT), não pela borda
 Allowed methods: GET, POST, PUT, PATCH, DELETE, OPTIONS
 Allowed headers: Authorization, Content-Type
 Max age: 86400
 ```
 
 ## Security
-- All endpoints require HTTPS
-- Sensitive data never in URL parameters
-- Input validation on all parameters (type, length, format)
-- Output encoding to prevent XSS in API responses
-- See also: `docs/specs/security/`
+
+- HTTPS obrigatório em produção (garantido pelo Render)
+- Dados sensíveis nunca em URL parameters
+- Validação de input em todos os parâmetros (tipo, tamanho, formato) via Pydantic
+- Ver `docs/specs/security/` para política completa
 
 ## Documentation
-[SPEC] Choose: OpenAPI/Swagger | API Blueprint | Custom markdown
-- Location: [SPEC] (`docs/api/openapi.yaml`, `docs/api/`, etc.)
-- Auto-generation: [SPEC] (from code annotations, or manually maintained)
+
+FastAPI gera OpenAPI automaticamente em `/docs` (Swagger UI) e `/openapi.json`.
+Não há arquivo OpenAPI manual — o código é a fonte da verdade.

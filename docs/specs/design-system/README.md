@@ -1,66 +1,56 @@
 # Module: Design System
 
 > Visual design tokens, component patterns, and UI implementation strategy.
-> This module makes Figma **optional** — teams choose between design tool integration or agent-driven UI generation.
-
-## How to enable
-1. Fill in the sections below
-2. Choose your design flow: **Figma** or **Agent-driven**
-3. Create a skill in `.claude/skills/frontend-agent/SKILL.md` if using agent-driven flow
 
 ## Design flow
 
-[SPEC] Choose your primary flow:
-- [ ] **Figma flow** → PRD + Figma link → code (requires Figma MCP server)
-- [ ] **Agent flow** → PRD + design tokens → frontend agent generates UI
-- [ ] **Hybrid** → Figma for complex screens, agent for standard CRUD/forms
+**Agent flow** — PRD + design tokens → frontend agent generates UI. Figma não é usado.
 
 ## Design tokens
 
-[SPEC] Define your tokens (or link to external source):
-
 ### Colors
-```
-[SPEC] Example:
---color-primary: #2563eb
---color-primary-hover: #1d4ed8
---color-surface: #ffffff
---color-surface-alt: #f8fafc
---color-text: #0f172a
---color-text-muted: #64748b
---color-border: #e2e8f0
---color-error: #dc2626
---color-success: #16a34a
---color-warning: #d97706
+
+```css
+/* Primary — verde musgo agroecológico */
+--color-primary:       #4a7c59
+--color-primary-hover: #3a6248
+--color-primary-light: #e8f0ea
+
+/* Neutrals (Tailwind stone) */
+--color-surface:      #fafaf9   /* stone-50 */
+--color-surface-alt:  #f5f5f4   /* stone-100 */
+--color-border:       #e7e5e4   /* stone-200 */
+--color-text:         #1c1917   /* stone-900 */
+--color-text-muted:   #78716c   /* stone-500 */
+
+/* Semantic */
+--color-error:   #e11d48   /* rose-600 */
+--color-success: #4a7c59   /* = primary */
+--color-warning: #d97706   /* amber-600 */
 ```
 
 ### Typography
+
+```css
+--font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif
+--font-mono: ui-monospace, "JetBrains Mono", monospace
+
+--text-xs:   0.75rem  / 1rem
+--text-sm:   0.875rem / 1.25rem
+--text-base: 1rem     / 1.5rem
+--text-lg:   1.125rem / 1.75rem
+--text-xl:   1.25rem  / 1.75rem
 ```
-[SPEC] Example:
---font-sans: "Inter", system-ui, sans-serif
---font-mono: "JetBrains Mono", monospace
---text-xs: 0.75rem / 1rem
---text-sm: 0.875rem / 1.25rem
---text-base: 1rem / 1.5rem
---text-lg: 1.125rem / 1.75rem
---text-xl: 1.25rem / 1.75rem
---text-2xl: 1.5rem / 2rem
-```
+
+Inter deve ser carregada via `<link>` no `index.html` (Google Fonts ou self-hosted).
 
 ### Spacing
-```
-[SPEC] Example:
---space-1: 0.25rem (4px)
---space-2: 0.5rem (8px)
---space-3: 0.75rem (12px)
---space-4: 1rem (16px)
---space-6: 1.5rem (24px)
---space-8: 2rem (32px)
-```
+
+Tailwind default (escala 4px base). Sem tokens customizados.
 
 ### Radii & Shadows
-```
-[SPEC] Example:
+
+```css
 --radius-sm: 0.25rem
 --radius-md: 0.375rem
 --radius-lg: 0.5rem
@@ -70,64 +60,43 @@
 
 ## Component library
 
-[SPEC] Choose:
-- [ ] Custom components from scratch
-- [ ] shadcn/ui
-- [ ] Radix UI
-- [ ] Material UI
-- [ ] Ant Design
-- [ ] Chakra UI
-- [ ] Other: ___
+**Radix UI** (já instalado: `@radix-ui/react-dialog`, `@radix-ui/react-select`, `@radix-ui/react-toast`).
+Sem shadcn/ui — componentes são construídos diretamente sobre Radix + Tailwind.
 
-## Figma flow (if enabled)
+## Icons
 
-[SPEC] Fill if using Figma:
-- Figma file: [LINK]
-- Figma MCP server: enabled/disabled
-- Component mapping: `docs/specs/design-system/figma-component-map.md`
-- Handoff process: designer publishes → dev runs `/implement` with Figma link
-
-## Agent flow (if enabled)
-
-When no Figma link is provided, the frontend agent generates UI from:
-1. **Design tokens** defined above
-2. **Component library** selected above
-3. **PRD requirements** (functional specs, user stories)
-4. **Reference patterns** — existing screens in the project for consistency
-
-### Agent rules
-- Always use design tokens — never hardcode colors, spacing, or typography
-- Follow component library conventions and patterns
-- Match the visual style of existing screens in the project
-- Generate responsive layouts (mobile-first)
-- Include loading, empty, and error states
-- Follow accessibility standards (see `docs/specs/accessibility/`)
-
-## Layout patterns
-
-[SPEC] Define standard layouts:
-- [ ] Sidebar + content
-- [ ] Top nav + content
-- [ ] Dashboard grid
-- [ ] Form layouts (single column / two column)
-- [ ] Card grid / list view toggle
-- [ ] Modal / drawer patterns
-
-## Responsive breakpoints
-
-[SPEC] Define:
-```
-sm: 640px
-md: 768px
-lg: 1024px
-xl: 1280px
-2xl: 1536px
-```
+**Lucide React** — instalar com `pnpm add lucide-react`.
+Substituir todos os SVGs inline progressivamente. Novos componentes usam Lucide obrigatoriamente.
 
 ## Dark mode
 
-[SPEC] Choose:
-- [ ] Not supported
-- [ ] Light only with dark-ready tokens
-- [ ] Full dark mode with toggle
-- [ ] System preference auto-detect
+Toggle manual (botão no layout). Implementar com classe `dark` no `<html>` via `localStorage`.
+Tokens `dark:` devem ser definidos junto com os tokens light acima quando implementado.
+
+## Layout patterns
+
+- **Sidebar + content**: sidebar de navegação fixa (esquerda) + área principal com scroll
+- Sem hamburger menus — sidebar sempre visível no desktop
+- Toda a largura disponível — sem `max-w-xl` estilo mobile
+- Colunas Kanban com scroll independente, cabeçalhos fixos
+
+## Agent rules
+
+- Sempre usar tokens — nunca hardcodar cores, espaçamento ou tipografia
+- Desktop-first: targets compactos (28–32px), não touch-friendly (44px+)
+- Modais sempre centralizados — nunca bottom-sheet
+- Hover states obrigatórios em elementos interativos
+- Estados de loading, empty e error obrigatórios em todo componente de dados
+- Atalhos de teclado (`N`/`Ctrl+N` nova tarefa, `Esc` fechar modal) em toda feature de Agenda
+
+## Responsive breakpoints
+
+Desktop-first. Mobile não é prioridade atual.
+
+```
+sm:  640px
+md:  768px
+lg:  1024px
+xl:  1280px
+2xl: 1536px
+```

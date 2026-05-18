@@ -161,7 +161,8 @@ Em qualquer momento, o usuário pode exportar todos os seus dados em um zip não
 - **Data Architecture:** definir mapeamento entidade → JSONL para garantir reversibilidade. Toda entidade nova deve declarar como é serializada para backup.
 
 ## References
-- ADR-005 — integração bancária (define armazenamento criptografado de tokens OAuth Google)
-- ADR-009 — autenticação (provê política de criptografia AES-GCM)
-- ADR-002 — sync offline (operation log e snapshots são incluídos no backup)
-- Google Drive API v3: https://developers.google.com/drive/api
+
+- [[adr-009-autenticacao]] — política de criptografia AES-GCM usada nos backups
+- [[adr-005-integracao-bancaria]] — OAuth Google reutilizado; tokens armazenados conforme este ADR
+- [[adr-002-sync-offline]] — operation log e snapshots incluídos no backup
+- [[feat-onboarding]] — consentimento para Drive faz parte do fluxo Google Sign-In

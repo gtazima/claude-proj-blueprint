@@ -105,5 +105,7 @@ Quando o módulo Culturas gera uma tarefa automaticamente (ex: "lote 003 entra e
 - **Data Architecture:** campos `scheduled_window_start`, `scheduled_window_end`, `financial_score`, `dependency_ids[]` e `repeatedly_deferred` precisam estar no schema da tabela de tarefas desde o início.
 
 ## References
-- PRD: `docs/product/feat-agenda.md`
-- PRD: `docs/product/feat-culturas.md`
+
+- [[feat-agenda]] — PRD do módulo Agenda (implementação direta deste ADR)
+- [[feat-culturas]] — geração de tarefas com janelas de timing biológico
+- [[feat-financeiro]] — evolução futura do financial_score para cálculo automático

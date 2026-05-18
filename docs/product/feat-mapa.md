@@ -94,3 +94,10 @@ Oferecer uma visão geográfica integrada da propriedade onde o produtor vê o e
 - [ ] Sensores e automações no mapa ficam inativos até o módulo Automação estar implementado — marcadores aparecem sem dados em tempo real
 - [ ] Rollback: módulo puramente visual — desativar não afeta nenhum outro módulo
 - [ ] Validação: verificar importação do KML da propriedade específica antes de considerar o módulo pronto
+
+## Relacionados
+
+- [[adr-014-biblioteca-de-mapas]] — decisão Mapbox GL JS; plano de saída para MapLibre
+- [[adr-003-controle-acesso-por-cultura]] — usuários com filtro de cultura veem apenas áreas das suas culturas permitidas
+- [[feat-automacao]] — sensores e dispositivos aparecem como marcadores com dados em tempo real
+- [[feat-culturas]] — talhões do mapa são vinculados a culturas e ciclos

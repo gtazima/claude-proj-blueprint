@@ -109,3 +109,11 @@ Dar ao produtor uma visão clara do custo real por cultura e por ciclo, do fluxo
 - [ ] Seed de categorias e tags padrão para a propriedade (insumo, manutenção, frete, utilidades, casa sede, etc.)
 - [ ] Rollback: módulo independente — desativar não afeta Agenda, Culturas ou Caderno de Campo
 - [ ] Validação: revisar com o produtor as primeiras 20 classificações automáticas antes de confiar no fluxo de aprovação rápida
+
+## Relacionados
+
+- [[adr-005-integracao-bancaria]] — estratégia OFX/CSV + e-mail no MVP, Open Finance pós-MVP
+- [[feat-gmail-financeiro]] — alimenta este módulo com transações extraídas de e-mails bancários
+- [[adr-004-camada-ia-plugavel]] — classificação de transações usa esta camada (AC-5, AC-7)
+- [[adr-015-moderacao-conteudo-ia]] — confidence threshold de classificação automática definido aqui
+- [[feat-culturas]] — custo por ciclo requer junção entre transações e unidades de gestão de culturas

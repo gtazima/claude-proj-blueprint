@@ -190,3 +190,11 @@ Sem checklist de configuração para convidados. O admin é quem configura; conv
   - Configurar pelo menos 1 equipamento
   - Conectar Gmail OU importar primeiro extrato
 - **Taxa de abandono no onboarding:** 0% (single-user MVP — qualquer abandono é bug)
+
+## Relacionados
+
+- [[adr-009-autenticacao]] — AC-1, AC-16, AC-17: fluxo de sign-up, convites, setup de dispositivo
+- [[adr-012-backup-google-drive]] — consentimento para Drive faz parte do fluxo Google Sign-In
+- [[adr-014-biblioteca-de-mapas]] — AC-22: importação KML da propriedade no onboarding
+- [[feat-gmail-financeiro]] — conexão Gmail é marco crítico dos primeiros 30 dias
+- [[feat-culturas]] — cadastro de culturas e ciclos é marco crítico do onboarding

@@ -116,3 +116,9 @@ Dar ao produtor um repositório único para itens a comprar — com histórico d
 - Taxa de itens com pelo menos um link ou nota preenchida (indica uso efetivo do campo de pesquisa, não só lista básica)
 - Taxa de sincronização bem-sucedida entre AgroecologIA e Google Tasks (meta: >99%)
 - Adoção do Google Tasks como interface de consulta durante compras (avaliado por feedback qualitativo do produtor)
+
+## Relacionados
+
+- [[feat-google-tasks-sync]] — integração Google Tasks que este módulo estende (FEATURE_GOOGLE_SYNC_ENABLED obrigatório)
+- [[feat-manutencao]] — origem de itens de compra proativos gerados por alertas de manutenção
+- [[adr-009-autenticacao]] — tokens OAuth Google reutilizados por este módulo

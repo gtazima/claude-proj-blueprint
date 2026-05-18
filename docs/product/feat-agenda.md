@@ -105,3 +105,10 @@ Substituir a memória humana por uma visão estruturada e confiável do que prec
 - [ ] Sem migração de dados — banco começa vazio
 - [ ] Rollback: reverter deploy da API + PWA. Dados em SQLite local não são afetados.
 - [ ] Antes do primeiro uso: configurar grupo WhatsApp + número do Evolution API no `.env`
+
+## Relacionados
+
+- [[adr-001-algoritmo-priorizacao-agenda]] — score de prioridade (timing × 1000 + dependência × 100 + financeiro × 10)
+- [[adr-002-sync-offline]] — estratégia LWW + operation log para funcionamento offline
+- [[adr-010-implementacao-sync-offline]] — implementação técnica com Dexie
+- [[feat-caderno-de-campo]] — toda tarefa concluída gera entrada automática no caderno

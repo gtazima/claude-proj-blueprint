@@ -176,9 +176,10 @@ Análise periódica deste log identifica:
 - **Testing strategy (ADR-008):** evals de IA devem incluir casos adversariais — prompts que tentam fazer o modelo violar guardrails. Mede robustez do sistema.
 
 ## References
-- PRD: `docs/product/feat-vendas.md` (geração de conteúdo)
-- PRD: `docs/product/feat-caderno-de-campo.md` (sugestões da IA)
-- PRD: `docs/product/feat-financeiro.md` (classificação)
-- ADR-004 — camada de IA plugável
-- ADR-008 — estratégia de testes (evals adversariais)
-- ADR-011 — provedor padrão de IA
+
+- [[feat-vendas]] — AC-9, AC-10, AC-11: guardrails para conteúdo publicado
+- [[feat-caderno-de-campo]] — sugestões da IA passam por aprovação (AC-9 a AC-13)
+- [[feat-financeiro]] — confidence threshold para classificação automática (AC-5, AC-6, AC-7)
+- [[adr-004-camada-ia-plugavel]] — camada que este ADR complementa com guardrails
+- [[adr-008-estrategia-de-testes]] — evals adversariais medem robustez dos guardrails
+- [[adr-011-provedor-ia-capacity-planning]] — DeepSeek em conteúdo de marketing requer este ADR ativo

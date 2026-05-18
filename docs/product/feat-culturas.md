@@ -112,3 +112,10 @@ Modelar todas as culturas da propriedade com seus ciclos, unidades de gestão e 
 - [ ] Seed de dados: culturas e estrutura inicial da propriedade devem ser inseridas via script antes do primeiro uso
 - [ ] Rollback: sem impacto em outros módulos se revertido (Agenda volta a funcionar apenas com tarefas manuais)
 - [ ] Validação: produtor deve revisar o seed de culturas e confirmar que os ciclos configurados refletem a realidade da propriedade antes de ativar geração automática de tarefas
+
+## Relacionados
+
+- [[adr-001-algoritmo-priorizacao-agenda]] — geração de tarefas preenche janelas de timing biológico (AC-10, AC-11)
+- [[adr-003-controle-acesso-por-cultura]] — AC-12 e AC-13: parceiros acessam apenas suas culturas permitidas
+- [[feat-agenda]] — tarefas geradas por ciclos aparecem na ordem do dia
+- [[feat-caderno-de-campo]] — colheitas registradas viram entradas no caderno automaticamente

@@ -194,7 +194,10 @@ Não buscamos 100% global porque:
 - **Module owners:** cada módulo deve manter sua própria suíte de testes nos thresholds definidos. Pull requests que reduzem cobertura abaixo do mínimo são bloqueados.
 
 ## References
-- ADR-001 (priorização) — testes já existem como referência de qualidade
-- ADR-002 (sync offline) — define edge cases que precisam de cobertura explícita
-- ADR-003 (controle de acesso) — define teste de segurança obrigatório
-- ADR-004 (camada IA) — define como evals encaixam no pipeline
+
+- [[adr-001-algoritmo-priorizacao-agenda]] — score de priorização é o componente com maior exigência de cobertura
+- [[adr-002-sync-offline]] — edge cases de sync precisam de cobertura explícita
+- [[adr-010-implementacao-sync-offline]] — operation log exige ≥95% de cobertura
+- [[adr-003-controle-acesso-por-cultura]] — teste de segurança obrigatório: filtro por cultura em todas as rotas
+- [[adr-004-camada-ia-plugavel]] — evals de IA encaixam no pipeline como camada adicional
+- [[adr-011-provedor-ia-capacity-planning]] — suíte de evals deve rodar em todos os provedores suportados

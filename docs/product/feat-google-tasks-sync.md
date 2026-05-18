@@ -112,3 +112,9 @@ Manter o AgroecologIA como fonte de verdade das tarefas da propriedade enquanto 
 - [x] Migration 002: remoção de `calendar_event_id` (task) e `google_last_poll_token` (property_settings)
 - [x] Listas "AgroecologIA" e "memória" criadas na primeira autenticação (idempotente)
 - [ ] Reconexão OAuth necessária: o escopo mudou (removido `calendar.readonly`); o token atual ainda funciona para Tasks, mas na próxima reconexão o escopo será menor. Não há urgência.
+
+## Relacionados
+
+- [[adr-009-autenticacao]] — política de armazenamento de tokens OAuth Google (criptografados)
+- [[feat-agenda]] — tarefas sincronizadas aparecem no Kanban da Agenda
+- [[feat-compras]] — próxima feature que estende esta integração (lista "lista de compras")

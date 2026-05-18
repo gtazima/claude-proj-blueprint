@@ -174,8 +174,8 @@ Permite auditoria: "por que não recebi alerta sobre X?" → consultar log.
 - **Alert sources:** cada módulo que gera alertas (Agenda, Manutenção, Automação, Sync, Backup) deve declarar quais tipos publica.
 
 ## References
-- PRD: `docs/product/feat-agenda.md` (alertas de tarefas)
-- PRD: `docs/product/feat-manutencao.md` (alertas preventivos)
-- PRD: `docs/product/feat-automacao.md` (alertas de sensor)
-- ADR-009: autenticação (`device_sessions` armazena push subscriptions)
-- Web Push Protocol: https://www.rfc-editor.org/rfc/rfc8030
+
+- [[feat-agenda]] — fonte de alertas de tarefas atrasadas ou urgentes
+- [[feat-manutencao]] — fonte de alertas preventivos de equipamentos
+- [[feat-automacao]] — fonte de alertas de sensor offline ou threshold excedido
+- [[adr-009-autenticacao]] — `device_sessions` armazena push subscriptions

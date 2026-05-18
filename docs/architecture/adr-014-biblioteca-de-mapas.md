@@ -121,7 +121,6 @@ Mitigação do lock-in:
 - **Performance:** medir tempo de primeira renderização do mapa em celular antigo (target: <3s).
 
 ## References
-- PRD: `docs/product/feat-mapa.md`
-- Mapbox GL JS docs: https://docs.mapbox.com/mapbox-gl-js/
-- MapLibre (plano de saída): https://maplibre.org/
-- KML para GeoJSON: https://github.com/placemark/togeojson
+
+- [[feat-mapa]] — todos os ACs do módulo Mapa dependem deste ADR
+- [[feat-onboarding]] — AC-22: importação KML da propriedade usa `@tmcw/togeojson`

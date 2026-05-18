@@ -445,11 +445,9 @@ A arquitetura plugável (ADR-004) e este ADR já preparam o terreno para essa tr
 - **Testing strategy (ADR-008):** suíte de evals deve rodar em todos os provedores suportados. Modelo de "provider matrix" no CI.
 
 ## References
-- ADR-004 — camada de IA plugável (este ADR especializa as decisões deixadas em aberto)
-- ADR-008 — estratégia de testes (evals de IA dependem das definições aqui)
-- ADR-015 — moderação de conteúdo gerado por IA (aplicável a todos os provedores)
-- Documentação Claude: https://www.anthropic.com/pricing
-- Documentação Gemini AI Studio: https://ai.google.dev/pricing
-- Documentação OpenAI: https://openai.com/pricing
-- Documentação DeepSeek: https://api-docs.deepseek.com/
-- Voyage AI (embeddings fallback): https://docs.voyageai.com/
+
+- [[adr-004-camada-ia-plugavel]] — arquitetura que este ADR especializa (interface AIProvider + adapters)
+- [[adr-008-estrategia-de-testes]] — evals de IA dependem das definições aqui; suíte deve rodar em todos os provedores
+- [[adr-015-moderacao-conteudo-ia]] — moderação aplicável a todos os provedores, especialmente DeepSeek em conteúdo de marketing
+- [[feat-caderno-de-campo]] — AC-9 (sugestões em ≤10s) depende do dimensionamento correto por provedor
+- [[feat-vendas]] — geração de conteúdo: qualidade varia por provedor; moderação obrigatória

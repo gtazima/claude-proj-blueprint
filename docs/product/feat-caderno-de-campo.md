@@ -99,3 +99,11 @@ Capturar todo o conhecimento gerado na propriedade — estruturado ou não — e
 - [ ] Entradas automáticas (Agenda + Culturas) funcionam desde o dia 1; entradas manuais dependem do app mobile estar disponível
 - [ ] Modelo de transcrição offline deve ser baixado no primeiro uso do app (com indicador de progresso)
 - [ ] Rollback: desativar processamento de IA não afeta o registro de entradas — o caderno continua funcionando como log simples
+
+## Relacionados
+
+- [[feat-agenda]] — toda tarefa concluída gera entrada automática no caderno
+- [[adr-001-algoritmo-priorizacao-agenda]] — padrões do caderno alimentam inferência de timing biológico
+- [[adr-002-sync-offline]] — entradas offline sincronizam conforme esse modelo
+- [[adr-003-controle-acesso-por-cultura]] — entradas associadas a culturas restritas ficam invisíveis para usuários sem permissão
+- [[adr-004-camada-ia-plugavel]] — pipeline de processamento de observações usa esta camada (AC-9)

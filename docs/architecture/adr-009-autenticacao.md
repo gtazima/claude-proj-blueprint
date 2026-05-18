@@ -138,7 +138,9 @@ A arquitetura não fecha porta: Supabase Auth suporta MFA nativamente — basta 
 - **Integração bancária (ADR-005):** tokens OAuth de Gmail são armazenados conforme política de criptografia desta ADR.
 
 ## References
-- PRD: `docs/product/feat-onboarding.md`
-- ADR-002: sync offline (consome `device_id`)
-- ADR-003: controle de acesso (consome `module_permissions` + `culture_filter` do JWT)
-- ADR-005: integração bancária (consome política de criptografia de tokens)
+
+- [[feat-onboarding]] — AC-1, AC-16, AC-17 dependem deste ADR
+- [[feat-google-tasks-sync]] — tokens OAuth armazenados conforme política de criptografia deste ADR
+- [[adr-002-sync-offline]] — fornece `device_id` para o operation log
+- [[adr-003-controle-acesso-por-cultura]] — JWT carrega `module_permissions` + `culture_filter`
+- [[adr-005-integracao-bancaria]] — tokens OAuth de Gmail criptografados conforme este ADR

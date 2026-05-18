@@ -113,7 +113,9 @@ Admins convidam usuários externos por e-mail com permissões pré-configuradas.
 - **Caderno de Campo (feat-caderno-de-campo.md):** entradas associadas a culturas restritas ficam invisíveis para usuários sem permissão.
 
 ## References
-- PRD: `docs/product/feat-culturas.md`
-- PRD: `docs/product/feat-agenda.md`
-- PRD: `docs/product/feat-caderno-de-campo.md`
-- PRD: `docs/product/feat-mapa.md`
+
+- [[feat-culturas]] — AC-12 e AC-13: filtro de cultura para parceiros de meliponicultura
+- [[feat-agenda]] — tarefas filtradas por cultura no Kanban e na ordem do dia
+- [[feat-caderno-de-campo]] — entradas de culturas restritas invisíveis para usuários sem permissão
+- [[feat-mapa]] — áreas do mapa filtradas por cultura
+- [[adr-009-autenticacao]] — JWT carrega `module_permissions` + `culture_filter` lidos pelo middleware
