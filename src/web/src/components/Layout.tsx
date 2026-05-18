@@ -46,7 +46,7 @@ const MODULES = [
         <path d="M7 7h6M7 10h6M7 13h4" strokeLinecap="round" />
       </svg>
     ),
-    ready: false,
+    ready: true,
   },
   {
     to: "/mapa",

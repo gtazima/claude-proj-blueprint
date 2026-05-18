@@ -115,6 +115,9 @@ class TaskService:
         self.session.add(task)
         self.session.commit()
         self.session.refresh(task)
+        # Caderno de Campo AC-6: entrada automática ao concluir tarefa
+        from app.services.field_notes import FieldNoteService
+        FieldNoteService(self.session).create_from_task(task)
         return task
 
     def undo_completion(self, task_id: UUID, *, device_id: str | None = None) -> Task:

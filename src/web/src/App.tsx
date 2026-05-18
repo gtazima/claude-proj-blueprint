@@ -4,6 +4,7 @@ import { UndoProvider } from "./contexts/UndoContext.tsx";
 import Layout from "./components/Layout.tsx";
 import LoginPage from "./pages/Login.tsx";
 import AgendaPage from "./pages/Agenda.tsx";
+import CadernoPage from "./pages/Caderno.tsx";
 import TarefasPage from "./pages/Today.tsx";
 import SettingsPage from "./pages/Settings.tsx";
 import GoogleCallbackPage from "./pages/GoogleCallback.tsx";
@@ -28,6 +29,7 @@ function ProtectedRoutes() {
         <Route path="/"                               element={<Navigate to="/tarefas" replace />} />
         <Route path="/hoje"                           element={<Navigate to="/tarefas" replace />} />
         <Route path="/agenda"                         element={<AgendaPage />} />
+        <Route path="/caderno"                        element={<CadernoPage />} />
         <Route path="/tarefas"                        element={<TarefasPage />} />
         <Route path="/configuracoes"                  element={<SettingsPage />} />
         <Route path="/configuracoes/google/callback"  element={<GoogleCallbackPage />} />

@@ -35,7 +35,7 @@ def _create_payload(
 
 class TestCreateEndpoint:
     def test_creates_with_201(self, client: TestClient):
-        response = client.post("/api/tasks", json=_create_payload(title="Aplicar calcário"))
+        response = client.post("/api/v1/tasks", json=_create_payload(title="Aplicar calcário"))
         assert response.status_code == 201
 
         body = response.json()
@@ -44,12 +44,12 @@ class TestCreateEndpoint:
         assert UUID(body["id"])
 
     def test_rejects_invalid_payload(self, client: TestClient):
-        response = client.post("/api/tasks", json={"title": ""})
+        response = client.post("/api/v1/tasks", json={"title": ""})
         assert response.status_code == 422
 
     def test_rejects_invalid_financial_score(self, client: TestClient):
         response = client.post(
-            "/api/tasks",
+            "/api/v1/tasks",
             json={"title": "x", "financial_score": 99, "executor": "produtor"},
         )
         assert response.status_code == 422
@@ -65,22 +65,22 @@ class TestTodayEndpoint:
         now = datetime.now(timezone.utc)
 
         client.post(
-            "/api/tasks",
+            "/api/v1/tasks",
             json=_create_payload(
                 title="critical",
                 scheduled_window_end=now - timedelta(hours=1),
             ),
         )
         client.post(
-            "/api/tasks",
+            "/api/v1/tasks",
             json=_create_payload(
                 title="distant",
                 scheduled_window_end=now + timedelta(days=60),
             ),
         )
-        client.post("/api/tasks", json=_create_payload(title="no-window"))
+        client.post("/api/v1/tasks", json=_create_payload(title="no-window"))
 
-        response = client.get("/api/tasks/today")
+        response = client.get("/api/v1/tasks/today")
         assert response.status_code == 200
 
         items = response.json()
@@ -91,8 +91,8 @@ class TestTodayEndpoint:
         assert scores == sorted(scores, reverse=True)
 
     def test_includes_priority_score(self, client: TestClient):
-        client.post("/api/tasks", json=_create_payload(title="x"))
-        items = client.get("/api/tasks/today").json()
+        client.post("/api/v1/tasks", json=_create_payload(title="x"))
+        items = client.get("/api/v1/tasks/today").json()
         assert "priority_score" in items[0]
 
 
@@ -103,30 +103,30 @@ class TestTodayEndpoint:
 
 class TestCompletionEndpoints:
     def test_complete_then_undo(self, client: TestClient):
-        created = client.post("/api/tasks", json=_create_payload()).json()
+        created = client.post("/api/v1/tasks", json=_create_payload()).json()
         task_id = created["id"]
 
-        response = client.post(f"/api/tasks/{task_id}/complete")
+        response = client.post(f"/api/v1/tasks/{task_id}/complete")
         assert response.status_code == 200
         assert response.json()["completed_at"] is not None
 
-        response = client.post(f"/api/tasks/{task_id}/uncomplete")
+        response = client.post(f"/api/v1/tasks/{task_id}/uncomplete")
         assert response.status_code == 200
         assert response.json()["completed_at"] is None
 
     def test_complete_creates_entry_in_completed_today(self, client: TestClient):
-        created = client.post("/api/tasks", json=_create_payload(title="ABC")).json()
-        client.post(f"/api/tasks/{created['id']}/complete")
+        created = client.post("/api/v1/tasks", json=_create_payload(title="ABC")).json()
+        client.post(f"/api/v1/tasks/{created['id']}/complete")
 
-        response = client.get("/api/tasks/completed-today")
+        response = client.get("/api/v1/tasks/completed-today")
         assert response.status_code == 200
         titles = [t["title"] for t in response.json()]
         assert "ABC" in titles
 
     def test_undo_always_works_regardless_of_time(self, client: TestClient):
-        created = client.post("/api/tasks", json=_create_payload()).json()
-        client.post(f"/api/tasks/{created['id']}/complete")
-        response = client.post(f"/api/tasks/{created['id']}/uncomplete")
+        created = client.post("/api/v1/tasks", json=_create_payload()).json()
+        client.post(f"/api/v1/tasks/{created['id']}/complete")
+        response = client.post(f"/api/v1/tasks/{created['id']}/uncomplete")
         assert response.status_code == 200
         assert response.json()["completed_at"] is None
 
@@ -138,11 +138,11 @@ class TestCompletionEndpoints:
 
 class TestDeferEndpoint:
     def test_defer_with_reason(self, client: TestClient):
-        created = client.post("/api/tasks", json=_create_payload()).json()
+        created = client.post("/api/v1/tasks", json=_create_payload()).json()
         new_window = (datetime.now(timezone.utc) + timedelta(days=5)).isoformat()
 
         response = client.post(
-            f"/api/tasks/{created['id']}/defer",
+            f"/api/v1/tasks/{created['id']}/defer",
             json={
                 "new_scheduled_window_start": new_window,
                 "reason": "vai chover até sexta",
@@ -154,25 +154,25 @@ class TestDeferEndpoint:
         assert body["last_deferral_reason"] == "vai chover até sexta"
 
     def test_repeatedly_deferred_flag(self, client: TestClient):
-        created = client.post("/api/tasks", json=_create_payload()).json()
+        created = client.post("/api/v1/tasks", json=_create_payload()).json()
         for i in range(3):
             new_window = (datetime.now(timezone.utc) + timedelta(days=i + 1)).isoformat()
             client.post(
-                f"/api/tasks/{created['id']}/defer",
+                f"/api/v1/tasks/{created['id']}/defer",
                 json={
                     "new_scheduled_window_start": new_window,
                     "reason": f"motivo {i}",
                 },
             )
-        response = client.get(f"/api/tasks/{created['id']}")
+        response = client.get(f"/api/v1/tasks/{created['id']}")
         assert response.json()["repeatedly_deferred"] is True
 
     def test_defer_completed_returns_400(self, client: TestClient):
-        created = client.post("/api/tasks", json=_create_payload()).json()
-        client.post(f"/api/tasks/{created['id']}/complete")
+        created = client.post("/api/v1/tasks", json=_create_payload()).json()
+        client.post(f"/api/v1/tasks/{created['id']}/complete")
 
         response = client.post(
-            f"/api/tasks/{created['id']}/defer",
+            f"/api/v1/tasks/{created['id']}/defer",
             json={
                 "new_scheduled_window_start": datetime.now(timezone.utc).isoformat(),
                 "reason": "x",
@@ -188,37 +188,37 @@ class TestDeferEndpoint:
 
 class TestNotFound:
     def test_get_unknown_returns_404(self, client: TestClient):
-        response = client.get(f"/api/tasks/{uuid4()}")
+        response = client.get(f"/api/v1/tasks/{uuid4()}")
         assert response.status_code == 404
 
     def test_complete_unknown_returns_404(self, client: TestClient):
-        response = client.post(f"/api/tasks/{uuid4()}/complete")
+        response = client.post(f"/api/v1/tasks/{uuid4()}/complete")
         assert response.status_code == 404
 
     def test_delete_unknown_returns_404(self, client: TestClient):
-        response = client.delete(f"/api/tasks/{uuid4()}")
+        response = client.delete(f"/api/v1/tasks/{uuid4()}")
         assert response.status_code == 404
 
 
 class TestSoftDelete:
     def test_delete_returns_204_and_hides_task(self, client: TestClient):
-        created = client.post("/api/tasks", json=_create_payload()).json()
+        created = client.post("/api/v1/tasks", json=_create_payload()).json()
         task_id = created["id"]
 
-        response = client.delete(f"/api/tasks/{task_id}")
+        response = client.delete(f"/api/v1/tasks/{task_id}")
         assert response.status_code == 204
 
-        response = client.get(f"/api/tasks/{task_id}")
+        response = client.get(f"/api/v1/tasks/{task_id}")
         assert response.status_code == 404
 
     def test_restore_recovers_deleted_task(self, client: TestClient):
-        created = client.post("/api/tasks", json=_create_payload(title="Restaurável")).json()
+        created = client.post("/api/v1/tasks", json=_create_payload(title="Restaurável")).json()
         task_id = created["id"]
 
-        client.delete(f"/api/tasks/{task_id}")
-        response = client.post(f"/api/tasks/{task_id}/restore")
+        client.delete(f"/api/v1/tasks/{task_id}")
+        response = client.post(f"/api/v1/tasks/{task_id}/restore")
         assert response.status_code == 200
         assert response.json()["title"] == "Restaurável"
 
-        response = client.get(f"/api/tasks/{task_id}")
+        response = client.get(f"/api/v1/tasks/{task_id}")
         assert response.status_code == 200

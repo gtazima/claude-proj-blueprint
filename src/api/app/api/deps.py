@@ -8,6 +8,7 @@ from sqlmodel import Session
 
 from app.core.config import settings
 from app.db.session import get_session
+from app.services.field_notes import FieldNoteService
 from app.services.tasks import TaskService
 
 _bearer = HTTPBearer()
@@ -48,3 +49,7 @@ def get_current_user(
 
 def get_task_service(session: Session = Depends(get_session)) -> Generator[TaskService, None, None]:
     yield TaskService(session)
+
+
+def get_field_note_service(session: Session = Depends(get_session)) -> Generator[FieldNoteService, None, None]:
+    yield FieldNoteService(session)
