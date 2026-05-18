@@ -1,6 +1,6 @@
 import { supabase } from "../lib/supabase";
 
-const BASE = import.meta.env.VITE_API_URL || "/api";
+const BASE = import.meta.env.VITE_API_URL || "/api/v1";
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const { data: { session } } = await supabase.auth.getSession();

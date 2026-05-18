@@ -48,8 +48,8 @@ export interface TaskUpdatePayload {
 import { supabase } from "../lib/supabase";
 
 // Em dev o proxy do Vite resolve /api → localhost:8000.
-// Em produção, VITE_API_URL aponta para https://agroecologia.onrender.com/api
-const BASE = import.meta.env.VITE_API_URL || "/api";
+// Em produção, VITE_API_URL aponta para https://agroecologia.onrender.com/api/v1
+const BASE = import.meta.env.VITE_API_URL || "/api/v1";
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const { data: { session } } = await supabase.auth.getSession();

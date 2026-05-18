@@ -4,9 +4,7 @@ import clsx from "clsx";
 import { useUndo } from "../contexts/UndoContext.tsx";
 import { tasksApi, type TaskWithPriority } from "../api/tasks.ts";
 import {
-  parseTitle, buildTitle,
-  sortedTypeTags, sortedCultureTags,
-  TYPE_TAGS, CULTURE_TAGS,
+  parseTitle, buildTitle, sortedByFrequency,
 } from "../constants/activityTags.ts";
 import TaskCard from "./TaskCard.tsx";
 
@@ -16,10 +14,12 @@ export type KanbanMode = "type" | "culture" | "date";
 export type DateDelta  = 1 | 2 | 3 | 7 | 14 | 30;
 
 interface Props {
-  tasks:      TaskWithPriority[];
-  mode:       KanbanMode;
-  dateDelta:  DateDelta;
-  onAddTask:  (type: string) => void;
+  tasks:         TaskWithPriority[];
+  mode:          KanbanMode;
+  dateDelta:     DateDelta;
+  onAddTask:     (type: string) => void;
+  typeNames?:    string[];
+  cultureNames?: string[];
 }
 
 // ─── Date helpers ─────────────────────────────────────────────────────────────
@@ -88,29 +88,27 @@ function dayLabel(isoKey: string): string {
 
 // ─── Grouping ─────────────────────────────────────────────────────────────────
 
-function groupByType(tasks: TaskWithPriority[]) {
+function groupByType(tasks: TaskWithPriority[], typeNames: string[]) {
   const g: Record<string, TaskWithPriority[]> = {};
   for (const t of tasks) {
-    const col = parseTitle(t.title).type ?? "__other__";
+    const col = parseTitle(t.title, typeNames).type ?? "__other__";
     (g[col] ??= []).push(t);
   }
-  // Always show all type columns, even empty ones
   const ordered = [
-    ...sortedTypeTags(),
+    ...sortedByFrequency(typeNames),
     ...(g["__other__"] ? ["__other__"] : []),
   ];
   return { grouped: g, columns: ordered };
 }
 
-function groupByCulture(tasks: TaskWithPriority[]) {
+function groupByCulture(tasks: TaskWithPriority[], cultureNames: string[]) {
   const g: Record<string, TaskWithPriority[]> = {};
   for (const t of tasks) {
-    const col = parseTitle(t.title).culture ?? "__other__";
+    const col = parseTitle(t.title, undefined, cultureNames).culture ?? "__other__";
     (g[col] ??= []).push(t);
   }
-  // Always show all culture columns, even empty ones
   const ordered = [
-    ...sortedCultureTags(),
+    ...sortedByFrequency(cultureNames),
     ...(g["__other__"] ? ["__other__"] : []),
   ];
   return { grouped: g, columns: ordered };
@@ -212,14 +210,14 @@ function getColPalette(col: string, mode: KanbanMode): ColPalette {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export default function KanbanView({ tasks, mode, dateDelta, onAddTask }: Props) {
+export default function KanbanView({ tasks, mode, dateDelta, onAddTask, typeNames = [], cultureNames = [] }: Props) {
   const qc = useQueryClient();
   const { push: pushUndo } = useUndo();
 
   const { grouped, columns: rawColumns } =
-    mode === "culture" ? groupByCulture(tasks)
+    mode === "culture" ? groupByCulture(tasks, cultureNames)
     : mode === "date"  ? groupByDate(tasks, dateDelta)
-    : groupByType(tasks);
+    : groupByType(tasks, typeNames);
 
   const [colOrder, setColOrder] = useState<string[]>(() =>
     mode === "date" ? rawColumns : loadOrder(mode, rawColumns)
@@ -247,7 +245,7 @@ export default function KanbanView({ tasks, mode, dateDelta, onAddTask }: Props)
       if (!task) return;
 
       if (mode === "type") {
-        const newType = TYPE_TAGS.find((t) => t === targetCol) ?? null;
+        const newType = typeNames.find((t) => t === targetCol) ?? null;
         const p = parseTitle(task.title);
         if (p.type === newType) return;
         const previous = { title: task.title };
@@ -256,7 +254,7 @@ export default function KanbanView({ tasks, mode, dateDelta, onAddTask }: Props)
       }
 
       if (mode === "culture") {
-        const newCulture = CULTURE_TAGS.find((c) => c === targetCol) ?? null;
+        const newCulture = cultureNames.find((c) => c === targetCol) ?? null;
         const p = parseTitle(task.title);
         if (p.culture === newCulture) return;
         const previous = { title: task.title };
@@ -361,7 +359,7 @@ export default function KanbanView({ tasks, mode, dateDelta, onAddTask }: Props)
             {/* Cards */}
             <div className="flex-1 overflow-y-auto p-2 space-y-2 min-h-0">
               {colTasks.map((task) => {
-                const p = parseTitle(task.title);
+                const p = parseTitle(task.title, typeNames, cultureNames);
                 const aux = mode === "type"    ? p.culture
                           : mode === "culture" ? p.type
                           : [p.type, p.culture].filter(Boolean).join(" · ") || null;

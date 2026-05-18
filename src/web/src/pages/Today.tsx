@@ -311,7 +311,7 @@ export default function TodayPage() {
             ))}
           </div>
         ) : (
-          <KanbanView tasks={kanbanTasks} mode={mode} dateDelta={delta} onAddTask={openCreate} />
+          <KanbanView tasks={kanbanTasks} mode={mode} dateDelta={delta} onAddTask={openCreate} typeNames={typeNames} cultureNames={cultureNames} />
         )}
 
         {/* Completed strip — hidden when already shown in kanban */}

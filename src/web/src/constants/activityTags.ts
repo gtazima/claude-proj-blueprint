@@ -90,14 +90,6 @@ const _FALLBACK_TYPES = [
 
 const _FALLBACK_CULTURES = ["Shiitake", "Café SAF", "Abelhas", "Cúrcuma", "Canavial"];
 
-// Legacy sorted helpers (used by components before hooks load) — kept for compatibility
-export const sortedTypeTags    = () => sortedByFrequency(_FALLBACK_TYPES);
-export const sortedCultureTags = () => sortedByFrequency(_FALLBACK_CULTURES);
-export const sortedByFrequencyAll = () => [
-  ...sortedByFrequency(_FALLBACK_TYPES),
-  ...sortedByFrequency(_FALLBACK_CULTURES),
-];
-
-// Legacy type-check helpers — kept for KanbanView column detection
+// Fallback arrays used by TaskCard while the config API hasn't loaded yet.
 export const TYPE_TAGS    = _FALLBACK_TYPES as string[];
 export const CULTURE_TAGS = _FALLBACK_CULTURES as string[];
