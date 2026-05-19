@@ -21,4 +21,8 @@ class FieldNoteRead(BaseModel):
     culture: str | None
     management_unit: str | None
     executor: str | None
+    activity_type_slug: str | None
+    culture_slug: str | None
+    ambiente_slug: str | None
+    lote_slug: str | None
     created_at: datetime

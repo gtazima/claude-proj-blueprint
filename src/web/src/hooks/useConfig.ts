@@ -25,6 +25,22 @@ export function useCultures() {
   });
 }
 
+export function useAmbientes() {
+  return useQuery<Tag[]>({
+    queryKey: ["config", "ambientes"],
+    queryFn: configApi.listAmbientes,
+    staleTime: 5 * 60_000,
+  });
+}
+
+export function useLotes() {
+  return useQuery<Tag[]>({
+    queryKey: ["config", "lotes"],
+    queryFn: configApi.listLotes,
+    staleTime: 5 * 60_000,
+  });
+}
+
 export function usePersonName(slug: string): string {
   const { data: people } = usePeople();
   return people?.find((p) => p.slug === slug)?.name ?? slug;

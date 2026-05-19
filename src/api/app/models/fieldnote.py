@@ -18,4 +18,8 @@ class FieldNote(SQLModel, table=True):
     culture: str | None = Field(default=None, max_length=100)
     management_unit: str | None = Field(default=None, max_length=100)
     executor: str | None = Field(default=None, max_length=60)
+    activity_type_slug: str | None = Field(default=None, max_length=60, index=True)
+    culture_slug: str | None = Field(default=None, max_length=60, index=True)
+    ambiente_slug: str | None = Field(default=None, max_length=60, index=True)
+    lote_slug: str | None = Field(default=None, max_length=60, index=True)
     created_at: datetime = Field(default_factory=utcnow, nullable=False)

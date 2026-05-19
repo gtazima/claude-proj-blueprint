@@ -17,6 +17,10 @@ export interface Task {
   updated_at: string;
   is_pending_review: boolean;
   duration_minutes: number | null;
+  activity_type_slug: string | null;
+  culture_slug: string | null;
+  ambiente_slug: string | null;
+  lote_slug: string | null;
 }
 
 export interface TaskWithPriority extends Task {
@@ -30,6 +34,10 @@ export interface CreateTaskPayload {
   scheduled_window_end?: string;
   description?: string;
   dependency_ids?: string[];
+  activity_type_slug?: string | null;
+  culture_slug?: string | null;
+  ambiente_slug?: string | null;
+  lote_slug?: string | null;
 }
 
 export interface DeferTaskPayload {
@@ -43,6 +51,10 @@ export interface TaskUpdatePayload {
   scheduled_window_end?: string | null;
   description?: string | null;
   dependency_ids?: string[];
+  activity_type_slug?: string | null;
+  culture_slug?: string | null;
+  ambiente_slug?: string | null;
+  lote_slug?: string | null;
 }
 
 import { supabase } from "../lib/supabase";

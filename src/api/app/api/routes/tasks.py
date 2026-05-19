@@ -45,6 +45,10 @@ def _to_read(task) -> TaskRead:
         updated_at=task.updated_at,
         is_pending_review=task.is_pending_review,
         duration_minutes=task.duration_minutes,
+        activity_type_slug=task.activity_type_slug,
+        culture_slug=task.culture_slug,
+        ambiente_slug=task.ambiente_slug,
+        lote_slug=task.lote_slug,
     )
 
 

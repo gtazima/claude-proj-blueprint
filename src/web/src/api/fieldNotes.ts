@@ -29,6 +29,10 @@ export interface FieldNote {
   culture: string | null;
   management_unit: string | null;
   executor: string | null;
+  activity_type_slug: string | null;
+  culture_slug: string | null;
+  ambiente_slug: string | null;
+  lote_slug: string | null;
   created_at: string;
 }
 

@@ -27,3 +27,17 @@ class Culture(SQLModel, table=True):
     name: str = Field(min_length=1, max_length=100)
     slug: str = Field(min_length=1, max_length=60, unique=True, index=True)
     color: str = Field(default="#6B7280", max_length=20)
+
+
+class Ambiente(SQLModel, table=True):
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    name: str = Field(min_length=1, max_length=100)
+    slug: str = Field(min_length=1, max_length=60, unique=True, index=True)
+    color: str = Field(default="#6B7280", max_length=20)
+
+
+class Lote(SQLModel, table=True):
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    name: str = Field(min_length=1, max_length=100)
+    slug: str = Field(min_length=1, max_length=60, unique=True, index=True)
+    color: str = Field(default="#6B7280", max_length=20)

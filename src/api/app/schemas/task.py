@@ -22,6 +22,10 @@ class TaskCreate(BaseModel):
     financial_score: int = Field(default=0, ge=0, le=5)
     dependency_ids: list[UUID] = Field(default_factory=list)
     duration_minutes: int | None = Field(default=None, ge=1)
+    activity_type_slug: str | None = Field(default=None, max_length=60)
+    culture_slug: str | None = Field(default=None, max_length=60)
+    ambiente_slug: str | None = Field(default=None, max_length=60)
+    lote_slug: str | None = Field(default=None, max_length=60)
 
 
 class TaskUpdate(BaseModel):
@@ -35,6 +39,10 @@ class TaskUpdate(BaseModel):
     financial_score: int | None = Field(default=None, ge=0, le=5)
     dependency_ids: list[UUID] | None = None
     duration_minutes: int | None = Field(default=None, ge=1)
+    activity_type_slug: str | None = None
+    culture_slug: str | None = None
+    ambiente_slug: str | None = None
+    lote_slug: str | None = None
 
 
 class TaskDeferRequest(BaseModel):
@@ -66,6 +74,10 @@ class TaskRead(BaseModel):
     updated_at: datetime
     is_pending_review: bool
     duration_minutes: int | None
+    activity_type_slug: str | None
+    culture_slug: str | None
+    ambiente_slug: str | None
+    lote_slug: str | None
 
 
 class TaskWithPriority(TaskRead):

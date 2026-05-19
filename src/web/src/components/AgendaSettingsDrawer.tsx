@@ -8,9 +8,9 @@ import {
   type PersonCreate,
   type TagCreate,
 } from "../api/config.ts";
-import { usePeople, useActivityTypes, useCultures } from "../hooks/useConfig.ts";
+import { usePeople, useActivityTypes, useCultures, useAmbientes, useLotes } from "../hooks/useConfig.ts";
 
-type Tab = "people" | "types" | "cultures";
+type Tab = "people" | "types" | "cultures" | "ambientes" | "lotes";
 
 interface Props {
   onClose: () => void;
@@ -251,12 +251,92 @@ function CulturesTab() {
   );
 }
 
+// ─── Ambientes tab ────────────────────────────────────────────────────────────
+
+function AmbientesTab() {
+  const { data: ambientes = [], isLoading } = useAmbientes();
+  const qc = useQueryClient();
+
+  const create = useMutation({
+    mutationFn: (t: TagCreate) => configApi.createAmbiente(t),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ["config", "ambientes"] }),
+  });
+
+  const remove = useMutation({
+    mutationFn: (slug: string) => configApi.deleteAmbiente(slug),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["config", "ambientes"] });
+      void qc.invalidateQueries({ queryKey: ["tasks", "today"] });
+    },
+  });
+
+  if (isLoading) return <p className="text-sm text-stone-400 py-4 text-center">Carregando…</p>;
+
+  return (
+    <div>
+      <div className="divide-y divide-stone-100">
+        {ambientes.map((a) => (
+          <TagRow key={a.slug} tag={a} onDelete={(slug) => remove.mutate(slug)} />
+        ))}
+      </div>
+      <AddTagForm
+        onAdd={(name, slug) => create.mutate({ name, slug })}
+        isPending={create.isPending}
+      />
+    </div>
+  );
+}
+
+// ─── Lotes tab ────────────────────────────────────────────────────────────────
+
+function LotesTab() {
+  const { data: lotes = [], isLoading } = useLotes();
+  const qc = useQueryClient();
+
+  const create = useMutation({
+    mutationFn: (t: TagCreate) => configApi.createLote(t),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ["config", "lotes"] }),
+  });
+
+  const remove = useMutation({
+    mutationFn: (slug: string) => configApi.deleteLote(slug),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["config", "lotes"] });
+      void qc.invalidateQueries({ queryKey: ["tasks", "today"] });
+    },
+  });
+
+  if (isLoading) return <p className="text-sm text-stone-400 py-4 text-center">Carregando…</p>;
+
+  return (
+    <div>
+      <p className="text-xs text-stone-400 mb-3">
+        Lotes de produção dentro de cada ambiente (ex: Lote 01 shiitake, Talhão norte…)
+      </p>
+      <div className="divide-y divide-stone-100">
+        {lotes.map((l) => (
+          <TagRow key={l.slug} tag={l} onDelete={(slug) => remove.mutate(slug)} />
+        ))}
+        {lotes.length === 0 && (
+          <p className="text-xs text-stone-400 py-2 text-center">Nenhum lote cadastrado ainda.</p>
+        )}
+      </div>
+      <AddTagForm
+        onAdd={(name, slug) => create.mutate({ name, slug })}
+        isPending={create.isPending}
+      />
+    </div>
+  );
+}
+
 // ─── Drawer ───────────────────────────────────────────────────────────────────
 
 const TAB_LABELS: { id: Tab; label: string }[] = [
-  { id: "people",   label: "Responsáveis" },
-  { id: "types",    label: "Tipos de atividade" },
-  { id: "cultures", label: "Culturas" },
+  { id: "people",    label: "Responsáveis" },
+  { id: "types",     label: "Tipos" },
+  { id: "cultures",  label: "Culturas" },
+  { id: "ambientes", label: "Ambientes" },
+  { id: "lotes",     label: "Lotes" },
 ];
 
 export default function AgendaSettingsDrawer({ onClose }: Props) {
@@ -280,29 +360,49 @@ export default function AgendaSettingsDrawer({ onClose }: Props) {
           </button>
         </div>
 
-        {/* Tabs */}
-        <div className="flex border-b border-stone-200">
-          {TAB_LABELS.map(({ id, label }) => (
-            <button
-              key={id}
-              onClick={() => setTab(id)}
-              className={clsx(
-                "flex-1 py-2.5 text-[11px] font-medium transition-colors",
-                tab === id
-                  ? "border-b-2 border-green-600 text-green-700"
-                  : "text-stone-500 hover:text-stone-700"
-              )}
-            >
-              {label}
-            </button>
-          ))}
+        {/* Tabs — two rows to fit 5 tabs */}
+        <div className="border-b border-stone-200">
+          <div className="flex">
+            {TAB_LABELS.slice(0, 3).map(({ id, label }) => (
+              <button
+                key={id}
+                onClick={() => setTab(id)}
+                className={clsx(
+                  "flex-1 py-2 text-[11px] font-medium transition-colors",
+                  tab === id
+                    ? "border-b-2 border-green-600 text-green-700"
+                    : "text-stone-500 hover:text-stone-700"
+                )}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <div className="flex border-t border-stone-100">
+            {TAB_LABELS.slice(3).map(({ id, label }) => (
+              <button
+                key={id}
+                onClick={() => setTab(id)}
+                className={clsx(
+                  "flex-1 py-2 text-[11px] font-medium transition-colors",
+                  tab === id
+                    ? "border-b-2 border-green-600 text-green-700"
+                    : "text-stone-500 hover:text-stone-700"
+                )}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-5">
-          {tab === "people"   && <PeopleTab />}
-          {tab === "types"    && <TypesTab />}
-          {tab === "cultures" && <CulturesTab />}
+          {tab === "people"    && <PeopleTab />}
+          {tab === "types"     && <TypesTab />}
+          {tab === "cultures"  && <CulturesTab />}
+          {tab === "ambientes" && <AmbientesTab />}
+          {tab === "lotes"     && <LotesTab />}
         </div>
       </div>
     </>

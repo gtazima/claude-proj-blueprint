@@ -13,7 +13,7 @@ import unicodedata
 
 from sqlmodel import Session, select
 
-from app.models.config import ActivityType, Culture, Person
+from app.models.config import ActivityType, Ambiente, Culture, Lote, Person
 from app.models.task import Task
 from app.schemas.config import PersonCreate, PersonUpdate, TagCreate, TagUpdate
 
@@ -90,6 +90,16 @@ _SEED_CULTURES = [
     ("Canavial", "canavial", "#16A34A"),
 ]
 
+_SEED_AMBIENTES = [
+    ("SAF Piloto", "saf_piloto", "#4CAF50"),
+    ("SAF 1", "saf_1", "#66BB6A"),
+    ("SAF 2", "saf_2", "#2E7D32"),
+    ("Fotovoltaico", "fotovoltaico", "#FF8F00"),
+    ("Reservatório", "reservatorio", "#0288D1"),
+]
+
+_SEED_LOTES: list[tuple[str, str, str]] = []
+
 
 def seed_config(session: Session) -> None:
     """Popula as tabelas de configuração se estiverem vazias."""
@@ -104,6 +114,10 @@ def seed_config(session: Session) -> None:
     if session.exec(select(Culture)).first() is None:
         for name, slug, color in _SEED_CULTURES:
             session.add(Culture(name=name, slug=slug, color=color))
+
+    if session.exec(select(Ambiente)).first() is None:
+        for name, slug, color in _SEED_AMBIENTES:
+            session.add(Ambiente(name=name, slug=slug, color=color))
 
     session.commit()
 
@@ -196,6 +210,8 @@ class ActivityTypeService:
         ).all()
         for task in tasks:
             task.title = _strip_tag_from_title(task.title, obj.name) or task.title
+            if task.activity_type_slug == slug:
+                task.activity_type_slug = None
             self.session.add(task)
         self.session.delete(obj)
         self.session.commit()
@@ -242,6 +258,100 @@ class CultureService:
         ).all()
         for task in tasks:
             task.title = _strip_tag_from_title(task.title, obj.name) or task.title
+            if task.culture_slug == slug:
+                task.culture_slug = None
+            self.session.add(task)
+        self.session.delete(obj)
+        self.session.commit()
+
+
+# ─── AmbienteService ──────────────────────────────────────────────────────────
+
+
+class AmbienteService:
+    def __init__(self, session: Session) -> None:
+        self.session = session
+
+    def list(self) -> list[Ambiente]:
+        return list(self.session.exec(select(Ambiente).order_by(Ambiente.name)))
+
+    def get(self, slug: str) -> Ambiente:
+        obj = self.session.exec(select(Ambiente).where(Ambiente.slug == slug)).first()
+        if obj is None:
+            raise ConfigNotFoundError(f"Ambiente '{slug}' not found")
+        return obj
+
+    def create(self, payload: TagCreate) -> Ambiente:
+        if self.session.exec(select(Ambiente).where(Ambiente.slug == payload.slug)).first():
+            raise SlugConflictError(f"Slug '{payload.slug}' already exists")
+        obj = Ambiente(**payload.model_dump())
+        self.session.add(obj)
+        self.session.commit()
+        self.session.refresh(obj)
+        return obj
+
+    def update(self, slug: str, payload: TagUpdate) -> Ambiente:
+        obj = self.get(slug)
+        for field, value in payload.model_dump(exclude_unset=True).items():
+            setattr(obj, field, value)
+        self.session.add(obj)
+        self.session.commit()
+        self.session.refresh(obj)
+        return obj
+
+    def delete(self, slug: str) -> None:
+        obj = self.get(slug)
+        tasks = self.session.exec(
+            select(Task).where(Task.ambiente_slug == slug, Task.deleted_at.is_(None))  # type: ignore[attr-defined]
+        ).all()
+        for task in tasks:
+            task.ambiente_slug = None
+            self.session.add(task)
+        self.session.delete(obj)
+        self.session.commit()
+
+
+# ─── LoteService ──────────────────────────────────────────────────────────────
+
+
+class LoteService:
+    def __init__(self, session: Session) -> None:
+        self.session = session
+
+    def list(self) -> list[Lote]:
+        return list(self.session.exec(select(Lote).order_by(Lote.name)))
+
+    def get(self, slug: str) -> Lote:
+        obj = self.session.exec(select(Lote).where(Lote.slug == slug)).first()
+        if obj is None:
+            raise ConfigNotFoundError(f"Lote '{slug}' not found")
+        return obj
+
+    def create(self, payload: TagCreate) -> Lote:
+        if self.session.exec(select(Lote).where(Lote.slug == payload.slug)).first():
+            raise SlugConflictError(f"Slug '{payload.slug}' already exists")
+        obj = Lote(**payload.model_dump())
+        self.session.add(obj)
+        self.session.commit()
+        self.session.refresh(obj)
+        return obj
+
+    def update(self, slug: str, payload: TagUpdate) -> Lote:
+        obj = self.get(slug)
+        for field, value in payload.model_dump(exclude_unset=True).items():
+            setattr(obj, field, value)
+        self.session.add(obj)
+        self.session.commit()
+        self.session.refresh(obj)
+        return obj
+
+    def delete(self, slug: str) -> None:
+        obj = self.get(slug)
+        tasks = self.session.exec(
+            select(Task).where(Task.lote_slug == slug, Task.deleted_at.is_(None))  # type: ignore[attr-defined]
+        ).all()
+        for task in tasks:
+            task.lote_slug = None
             self.session.add(task)
         self.session.delete(obj)
         self.session.commit()

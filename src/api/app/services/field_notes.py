@@ -44,6 +44,10 @@ class FieldNoteService:
             entry_type="task_completed",
             source_task_id=task.id,
             executor=task.executor,
+            activity_type_slug=task.activity_type_slug,
+            culture_slug=task.culture_slug,
+            ambiente_slug=task.ambiente_slug,
+            lote_slug=task.lote_slug,
         )
         self.session.add(note)
         self.session.commit()

@@ -90,4 +90,20 @@ export const configApi = {
     request<Tag>(`/config/cultures/${slug}`, { method: "PATCH", body: JSON.stringify(t) }),
   deleteCulture: (slug: string) =>
     request<void>(`/config/cultures/${slug}`, { method: "DELETE" }),
+
+  listAmbientes: () => request<Tag[]>("/config/ambientes"),
+  createAmbiente: (t: TagCreate) =>
+    request<Tag>("/config/ambientes", { method: "POST", body: JSON.stringify(t) }),
+  updateAmbiente: (slug: string, t: TagUpdate) =>
+    request<Tag>(`/config/ambientes/${slug}`, { method: "PATCH", body: JSON.stringify(t) }),
+  deleteAmbiente: (slug: string) =>
+    request<void>(`/config/ambientes/${slug}`, { method: "DELETE" }),
+
+  listLotes: () => request<Tag[]>("/config/lotes"),
+  createLote: (t: TagCreate) =>
+    request<Tag>("/config/lotes", { method: "POST", body: JSON.stringify(t) }),
+  updateLote: (slug: string, t: TagUpdate) =>
+    request<Tag>(`/config/lotes/${slug}`, { method: "PATCH", body: JSON.stringify(t) }),
+  deleteLote: (slug: string) =>
+    request<void>(`/config/lotes/${slug}`, { method: "DELETE" }),
 };

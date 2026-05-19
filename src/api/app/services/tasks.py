@@ -49,6 +49,10 @@ class TaskService:
             financial_score=payload.financial_score,
             dependency_ids=[str(dep_id) for dep_id in payload.dependency_ids],
             device_id=device_id,
+            activity_type_slug=payload.activity_type_slug,
+            culture_slug=payload.culture_slug,
+            ambiente_slug=payload.ambiente_slug,
+            lote_slug=payload.lote_slug,
         )
         self.session.add(task)
         self.session.commit()

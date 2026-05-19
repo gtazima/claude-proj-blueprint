@@ -6,7 +6,7 @@ import { useUndo } from "../contexts/UndoContext.tsx";
 import {
   sortedByFrequency, incrementTagFrequency, buildTitle, parseTitle,
 } from "../constants/activityTags.ts";
-import { usePeople, useActivityTypes, useCultures } from "../hooks/useConfig.ts";
+import { usePeople, useActivityTypes, useCultures, useAmbientes, useLotes } from "../hooks/useConfig.ts";
 
 interface Props {
   onClose:       () => void;
@@ -34,6 +34,8 @@ export default function CreateTaskModal({ onClose, onSuccess, initialType, initi
   const { data: people = [] }        = usePeople();
   const { data: activityTypes = [] } = useActivityTypes();
   const { data: cultures = [] }      = useCultures();
+  const { data: ambientes = [] }     = useAmbientes();
+  const { data: lotes = [] }         = useLotes();
 
   const typeNames    = activityTypes.map((t) => t.name);
   const cultureNames = cultures.map((c) => c.name);
@@ -51,6 +53,16 @@ export default function CreateTaskModal({ onClose, onSuccess, initialType, initi
     editSource ? (parsed?.culture ?? null)
                : (initialType && cultureNames.includes(initialType) ? initialType : null)
   );
+  const [selAmbiente, setSelAmbiente] = useState<string | null>(
+    editSource?.ambiente_slug
+      ? (ambientes.find((a) => a.slug === editSource.ambiente_slug)?.slug ?? null)
+      : null
+  );
+  const [selLote, setSelLote] = useState<string | null>(
+    editSource?.lote_slug
+      ? (lotes.find((l) => l.slug === editSource.lote_slug)?.slug ?? null)
+      : null
+  );
   const [windowEnd, setWindowEnd]   = useState(
     editSource?.scheduled_window_end
       ? toLocalDateKey(new Date(editSource.scheduled_window_end))
@@ -63,6 +75,10 @@ export default function CreateTaskModal({ onClose, onSuccess, initialType, initi
   const typeTags    = sortedByFrequency(typeNames.length > 0 ? typeNames : activityTypes.map((t) => t.name));
   const cultureTags = sortedByFrequency(cultureNames.length > 0 ? cultureNames : cultures.map((c) => c.name));
   const activePeople = people.filter((p) => p.is_active);
+
+  // Helpers: name ↔ slug lookup
+  const typeSlug    = (name: string | null) => name ? (activityTypes.find((t) => t.name === name)?.slug ?? null) : null;
+  const cultureSlug = (name: string | null) => name ? (cultures.find((c) => c.name === name)?.slug ?? null) : null;
 
   const { data: allTasks = [] } = useQuery({
     queryKey: ["tasks", "today"],
@@ -93,15 +109,23 @@ export default function CreateTaskModal({ onClose, onSuccess, initialType, initi
           executor,
           dependency_ids:       depIds,
           scheduled_window_end: windowEndISO,
+          activity_type_slug:   typeSlug(selType),
+          culture_slug:         cultureSlug(selCulture),
+          ambiente_slug:        selAmbiente,
+          lote_slug:            selLote,
         });
       }
 
       return tasksApi.create({
-        title:        title ?? "",
-        description:  description.trim() || undefined,
+        title:              title ?? "",
+        description:        description.trim() || undefined,
         executor,
-        financial_score: 0,
-        dependency_ids: depIds,
+        financial_score:    0,
+        dependency_ids:     depIds,
+        activity_type_slug: typeSlug(selType),
+        culture_slug:       cultureSlug(selCulture),
+        ambiente_slug:      selAmbiente,
+        lote_slug:          selLote,
         ...(windowEndISO ? { scheduled_window_end: windowEndISO } : {}),
       });
     },
@@ -208,7 +232,7 @@ export default function CreateTaskModal({ onClose, onSuccess, initialType, initi
           <div>
             <div className="flex items-center justify-between mb-1.5">
               <label className="text-[11px] font-semibold text-stone-400 uppercase tracking-wide">
-                Cultura / área
+                Cultura
               </label>
               {selCulture && <button onClick={() => setSelCulture(null)} className="text-xs text-stone-400 hover:text-stone-600">Limpar</button>}
             </div>
@@ -227,6 +251,59 @@ export default function CreateTaskModal({ onClose, onSuccess, initialType, initi
               ))}
             </div>
           </div>
+
+          {/* Ambiente */}
+          {ambientes.length > 0 && (
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-[11px] font-semibold text-stone-400 uppercase tracking-wide">
+                  Ambiente
+                </label>
+                {selAmbiente && <button onClick={() => setSelAmbiente(null)} className="text-xs text-stone-400 hover:text-stone-600">Limpar</button>}
+              </div>
+              <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-1 px-1">
+                {ambientes.map((a) => (
+                  <button key={a.slug} type="button"
+                    onClick={() => setSelAmbiente(selAmbiente === a.slug ? null : a.slug)}
+                    className={clsx(
+                      "shrink-0 rounded border px-2.5 py-0.5 text-xs transition-colors",
+                      selAmbiente === a.slug
+                        ? "border-[color:var(--amb-color)] bg-green-50 font-medium"
+                        : "border-stone-200 bg-stone-50 text-stone-600 hover:border-green-300"
+                    )}
+                    style={selAmbiente === a.slug ? { "--amb-color": a.color, color: a.color } as React.CSSProperties : undefined}>
+                    {a.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Lote */}
+          {lotes.length > 0 && (
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-[11px] font-semibold text-stone-400 uppercase tracking-wide">
+                  Lote
+                </label>
+                {selLote && <button onClick={() => setSelLote(null)} className="text-xs text-stone-400 hover:text-stone-600">Limpar</button>}
+              </div>
+              <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-1 px-1">
+                {lotes.map((l) => (
+                  <button key={l.slug} type="button"
+                    onClick={() => setSelLote(selLote === l.slug ? null : l.slug)}
+                    className={clsx(
+                      "shrink-0 rounded border px-2.5 py-0.5 text-xs transition-colors",
+                      selLote === l.slug
+                        ? "border-blue-400 bg-blue-50 text-blue-700 font-medium"
+                        : "border-stone-200 bg-stone-50 text-stone-600 hover:border-blue-300"
+                    )}>
+                    {l.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Base title */}
           <div>

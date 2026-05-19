@@ -44,6 +44,12 @@ class Task(SQLModel, table=True):
     device_id: str | None = Field(default=None, max_length=64)
     version: int = Field(default=1, ge=1)
 
+    # Dimensões de tag estruturadas (slug das entidades de config)
+    activity_type_slug: str | None = Field(default=None, max_length=60, index=True)
+    culture_slug: str | None = Field(default=None, max_length=60, index=True)
+    ambiente_slug: str | None = Field(default=None, max_length=60, index=True)
+    lote_slug: str | None = Field(default=None, max_length=60, index=True)
+
     # Google sync
     is_pending_review: bool = Field(default=False)
     duration_minutes: int | None = Field(default=None, ge=1)

@@ -20,8 +20,10 @@ from app.schemas.config import (
 )
 from app.services.config import (
     ActivityTypeService,
+    AmbienteService,
     ConfigNotFoundError,
     CultureService,
+    LoteService,
     PeopleService,
     SlugConflictError,
 )
@@ -39,6 +41,14 @@ def _type_svc(session: Session = Depends(get_session)) -> ActivityTypeService:
 
 def _culture_svc(session: Session = Depends(get_session)) -> CultureService:
     return CultureService(session)
+
+
+def _ambiente_svc(session: Session = Depends(get_session)) -> AmbienteService:
+    return AmbienteService(session)
+
+
+def _lote_svc(session: Session = Depends(get_session)) -> LoteService:
+    return LoteService(session)
 
 
 # ─── People ──────────────────────────────────────────────────────────────────
@@ -131,6 +141,70 @@ def update_culture(slug: str, payload: TagUpdate, svc: CultureService = Depends(
 
 @router.delete("/cultures/{slug}", status_code=204)
 def delete_culture(slug: str, svc: CultureService = Depends(_culture_svc)) -> None:
+    try:
+        svc.delete(slug)
+    except ConfigNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e)) from e
+
+
+# ─── Ambientes ────────────────────────────────────────────────────────────────
+
+
+@router.get("/ambientes", response_model=list[TagRead])
+def list_ambientes(svc: AmbienteService = Depends(_ambiente_svc)) -> list[TagRead]:
+    return svc.list()  # type: ignore[return-value]
+
+
+@router.post("/ambientes", response_model=TagRead, status_code=201)
+def create_ambiente(payload: TagCreate, svc: AmbienteService = Depends(_ambiente_svc)) -> TagRead:
+    try:
+        return svc.create(payload)  # type: ignore[return-value]
+    except SlugConflictError as e:
+        raise HTTPException(status_code=409, detail=str(e)) from e
+
+
+@router.patch("/ambientes/{slug}", response_model=TagRead)
+def update_ambiente(slug: str, payload: TagUpdate, svc: AmbienteService = Depends(_ambiente_svc)) -> TagRead:
+    try:
+        return svc.update(slug, payload)  # type: ignore[return-value]
+    except ConfigNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e)) from e
+
+
+@router.delete("/ambientes/{slug}", status_code=204)
+def delete_ambiente(slug: str, svc: AmbienteService = Depends(_ambiente_svc)) -> None:
+    try:
+        svc.delete(slug)
+    except ConfigNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e)) from e
+
+
+# ─── Lotes ────────────────────────────────────────────────────────────────────
+
+
+@router.get("/lotes", response_model=list[TagRead])
+def list_lotes(svc: LoteService = Depends(_lote_svc)) -> list[TagRead]:
+    return svc.list()  # type: ignore[return-value]
+
+
+@router.post("/lotes", response_model=TagRead, status_code=201)
+def create_lote(payload: TagCreate, svc: LoteService = Depends(_lote_svc)) -> TagRead:
+    try:
+        return svc.create(payload)  # type: ignore[return-value]
+    except SlugConflictError as e:
+        raise HTTPException(status_code=409, detail=str(e)) from e
+
+
+@router.patch("/lotes/{slug}", response_model=TagRead)
+def update_lote(slug: str, payload: TagUpdate, svc: LoteService = Depends(_lote_svc)) -> TagRead:
+    try:
+        return svc.update(slug, payload)  # type: ignore[return-value]
+    except ConfigNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e)) from e
+
+
+@router.delete("/lotes/{slug}", status_code=204)
+def delete_lote(slug: str, svc: LoteService = Depends(_lote_svc)) -> None:
     try:
         svc.delete(slug)
     except ConfigNotFoundError as e:
