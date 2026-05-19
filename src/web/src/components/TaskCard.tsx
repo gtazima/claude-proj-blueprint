@@ -5,16 +5,14 @@ import { tasksApi, type TaskWithPriority } from "../api/tasks.ts";
 import { parseTitle, buildTitle, TYPE_TAGS } from "../constants/activityTags.ts";
 import { useUndo } from "../contexts/UndoContext.tsx";
 import { usePeople, useActivityTypes } from "../hooks/useConfig.ts";
-import PriorityBadge from "./PriorityBadge.tsx";
 import CompleteModal from "./CompleteModal.tsx";
 import CreateTaskModal from "./CreateTaskModal.tsx";
 import DeferModal from "./DeferModal.tsx";
 
 interface Props {
-  task:              TaskWithPriority;
-  auxiliaryLabel?:   string | null;
-  auxiliaryVariant?: "type" | "culture" | "neutral"; // drives badge color
-  displayTitle?:     string;
+  task:            TaskWithPriority;
+  auxiliaryLabel?: string | null;
+  displayTitle?:   string;
 }
 
 // Returns border + background together so isDragOver can cleanly override both.
@@ -26,7 +24,7 @@ function cardPriorityClass(score: number, isDragOver: boolean): string {
   return "border-l-[3px] border-l-stone-200 bg-white";
 }
 
-export default function TaskCard({ task, auxiliaryLabel, auxiliaryVariant = "neutral", displayTitle }: Props) {
+export default function TaskCard({ task, auxiliaryLabel, displayTitle }: Props) {
   const { data: people = [] } = usePeople();
   const { data: activityTypes = [] } = useActivityTypes();
   const typeNames = activityTypes.map((t) => t.name);
@@ -162,23 +160,12 @@ export default function TaskCard({ task, auxiliaryLabel, auxiliaryVariant = "neu
             </div>
 
             <div className="mt-1 flex items-center gap-2 text-[11px] text-stone-400 flex-wrap">
-              <PriorityBadge score={task.priority_score} />
               <span>{executorName}</span>
               {task.scheduled_window_end && (
                 <span>
                   {new Date(task.scheduled_window_end).toLocaleDateString("pt-BR", {
                     day: "2-digit", month: "2-digit", year: "2-digit",
                   })}
-                </span>
-              )}
-              {auxiliaryLabel && (
-                <span className={clsx(
-                  "rounded px-1.5 py-0.5 text-[10px] font-medium border",
-                  auxiliaryVariant === "culture" && "bg-amber-50 text-amber-800 border-amber-200",
-                  auxiliaryVariant === "type"    && "bg-green-50 text-green-800 border-green-200",
-                  auxiliaryVariant === "neutral" && "bg-stone-100 text-stone-500 border-stone-200"
-                )}>
-                  {auxiliaryLabel}
                 </span>
               )}
               {depCount > 0 && (
@@ -201,6 +188,17 @@ export default function TaskCard({ task, auxiliaryLabel, auxiliaryVariant = "neu
                 </span>
               )}
             </div>
+
+            {/* Tag pills */}
+            {auxiliaryLabel && (
+              <div className="mt-1 flex flex-wrap gap-1">
+                {auxiliaryLabel.split(" · ").map((pill) => (
+                  <span key={pill} className="rounded bg-stone-100 px-1.5 py-0.5 text-[10px] text-stone-500">
+                    {pill}
+                  </span>
+                ))}
+              </div>
+            )}
 
             {/* Deferral reason (AC-16) */}
             {task.last_deferral_reason && (

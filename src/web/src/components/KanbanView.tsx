@@ -14,12 +14,14 @@ export type KanbanMode = "type" | "culture" | "date";
 export type DateDelta  = 1 | 2 | 3 | 7 | 14 | 30;
 
 interface Props {
-  tasks:         TaskWithPriority[];
-  mode:          KanbanMode;
-  dateDelta:     DateDelta;
-  onAddTask:     (type: string) => void;
-  typeNames?:    string[];
-  cultureNames?: string[];
+  tasks:          TaskWithPriority[];
+  mode:           KanbanMode;
+  dateDelta:      DateDelta;
+  onAddTask:      (type: string) => void;
+  typeNames?:     string[];
+  cultureNames?:  string[];
+  typeColors?:    Record<string, string>; // name → hex
+  cultureColors?: Record<string, string>; // name → hex
 }
 
 // ─── Date helpers ─────────────────────────────────────────────────────────────
@@ -169,48 +171,9 @@ function loadOrder(mode: KanbanMode, defaults: string[]): string[] {
   } catch { return defaults; }
 }
 
-// ─── Column color palettes ────────────────────────────────────────────────────
-
-interface ColPalette { border: string; bg: string; header: string; text: string }
-
-const FALLBACK_PALETTE: ColPalette = {
-  border: "border-stone-200", bg: "bg-white",
-  header: "bg-stone-100 hover:bg-stone-200 border-stone-200", text: "text-stone-700",
-};
-
-const TYPE_PALETTES: Record<string, ColPalette> = {
-  "Irrigação":          { border: "border-sky-200",     bg: "bg-sky-50/40",     header: "bg-sky-100 hover:bg-sky-200 border-sky-200",         text: "text-sky-800" },
-  "Adubação":           { border: "border-lime-200",    bg: "bg-lime-50/40",    header: "bg-lime-100 hover:bg-lime-200 border-lime-200",       text: "text-lime-800" },
-  "Plantio":            { border: "border-teal-200",    bg: "bg-teal-50/40",    header: "bg-teal-100 hover:bg-teal-200 border-teal-200",       text: "text-teal-800" },
-  "Colheita":           { border: "border-amber-200",   bg: "bg-amber-50/40",   header: "bg-amber-100 hover:bg-amber-200 border-amber-200",    text: "text-amber-800" },
-  "Poda":               { border: "border-violet-200",  bg: "bg-violet-50/40",  header: "bg-violet-100 hover:bg-violet-200 border-violet-200", text: "text-violet-800" },
-  "Manejo":             { border: "border-stone-300",   bg: "bg-stone-50",      header: "bg-stone-200 hover:bg-stone-300 border-stone-300",    text: "text-stone-700" },
-  "Roçar":              { border: "border-green-200",   bg: "bg-green-50/40",   header: "bg-green-100 hover:bg-green-200 border-green-200",    text: "text-green-800" },
-  "Limpeza":            { border: "border-cyan-200",    bg: "bg-cyan-50/40",    header: "bg-cyan-100 hover:bg-cyan-200 border-cyan-200",       text: "text-cyan-800" },
-  "Manutenção":         { border: "border-rose-200",    bg: "bg-rose-50/40",    header: "bg-rose-100 hover:bg-rose-200 border-rose-200",       text: "text-rose-800" },
-  "Monitoramento":      { border: "border-indigo-200",  bg: "bg-indigo-50/40",  header: "bg-indigo-100 hover:bg-indigo-200 border-indigo-200", text: "text-indigo-800" },
-  "Controle de pragas": { border: "border-yellow-200",  bg: "bg-yellow-50/40",  header: "bg-yellow-100 hover:bg-yellow-200 border-yellow-200", text: "text-yellow-800" },
-  "Venda":              { border: "border-emerald-200", bg: "bg-emerald-50/40", header: "bg-emerald-100 hover:bg-emerald-200 border-emerald-200", text: "text-emerald-800" },
-  "Transporte":         { border: "border-slate-200",   bg: "bg-slate-50/40",   header: "bg-slate-100 hover:bg-slate-200 border-slate-200",    text: "text-slate-700" },
-};
-
-const CULTURE_PALETTES: Record<string, ColPalette> = {
-  "Shiitake":  { border: "border-orange-200", bg: "bg-orange-50/40", header: "bg-orange-100 hover:bg-orange-200 border-orange-200", text: "text-orange-900" },
-  "Café SAF":  { border: "border-amber-300",  bg: "bg-amber-50/40",  header: "bg-amber-200 hover:bg-amber-300 border-amber-300",    text: "text-amber-900" },
-  "Abelhas":   { border: "border-yellow-200", bg: "bg-yellow-50/40", header: "bg-yellow-100 hover:bg-yellow-200 border-yellow-200", text: "text-yellow-900" },
-  "Cúrcuma":   { border: "border-orange-300", bg: "bg-orange-50/40", header: "bg-orange-200 hover:bg-orange-300 border-orange-300", text: "text-orange-900" },
-  "Canavial":  { border: "border-green-200",  bg: "bg-green-50/40",  header: "bg-green-100 hover:bg-green-200 border-green-200",   text: "text-green-900" },
-};
-
-function getColPalette(col: string, mode: KanbanMode): ColPalette {
-  if (mode === "type")    return TYPE_PALETTES[col]    ?? FALLBACK_PALETTE;
-  if (mode === "culture") return CULTURE_PALETTES[col] ?? FALLBACK_PALETTE;
-  return FALLBACK_PALETTE;
-}
-
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export default function KanbanView({ tasks, mode, dateDelta, onAddTask, typeNames = [], cultureNames = [] }: Props) {
+export default function KanbanView({ tasks, mode, dateDelta, onAddTask, typeNames = [], cultureNames = [], typeColors = {}, cultureColors = {} }: Props) {
   const qc = useQueryClient();
   const { push: pushUndo } = useUndo();
 
@@ -302,17 +265,17 @@ export default function KanbanView({ tasks, mode, dateDelta, onAddTask, typeName
         const isOver    = overCol === col && dragCol !== col;
         const draggable = mode !== "date";
         const isSpecial = col.startsWith("__");
-        const isToday   = mode === "date" && col === todayKey();
-        const palette   = getColPalette(col, mode);
+        const isToday     = mode === "date" && col === todayKey();
+        const accentColor = mode === "type" ? typeColors[col] : mode === "culture" ? cultureColors[col] : undefined;
 
         return (
           <div
             key={col}
             className={clsx(
               "flex flex-col w-60 shrink-0 rounded-lg border transition-all duration-100",
-              isOver ? "border-blue-400 bg-blue-50/50 ring-1 ring-blue-300"
-              : `${palette.border} ${palette.bg}`
+              isOver ? "border-blue-400 bg-blue-50/50 ring-1 ring-blue-300" : "border-stone-200 bg-white"
             )}
+            style={!isOver && accentColor ? { borderLeftColor: accentColor, borderLeftWidth: "3px" } : undefined}
             onDragOver={(e) => {
               e.preventDefault();
               e.dataTransfer.dropEffect = "move";
@@ -337,14 +300,14 @@ export default function KanbanView({ tasks, mode, dateDelta, onAddTask, typeName
                 draggable && "cursor-grab active:cursor-grabbing",
                 dragCol === col ? "bg-stone-200 opacity-50 border-stone-300"
                 : isToday       ? "bg-green-50 hover:bg-green-100 border-stone-200"
-                : palette.header
+                : "bg-stone-50 hover:bg-stone-100 border-stone-200"
               )}
             >
               <span className={clsx(
-                "text-sm font-bold truncate",
+                "text-sm font-semibold truncate",
                 isToday   ? "text-green-700"
                 : isSpecial ? "text-stone-400"
-                : palette.text
+                : "text-stone-700"
               )}>
                 {label}
               </span>
@@ -363,15 +326,12 @@ export default function KanbanView({ tasks, mode, dateDelta, onAddTask, typeName
                 const aux = mode === "type"    ? p.culture
                           : mode === "culture" ? p.type
                           : [p.type, p.culture].filter(Boolean).join(" · ") || null;
-                const auxVariant = mode === "type" ? "culture" : mode === "culture" ? "type" : "neutral";
-                // Strip the primary-dimension tag from the card title to avoid redundancy with the column header
                 const displayTitle = mode === "date" ? task.title : (p.base || task.title);
                 return (
                   <TaskCard
                     key={task.id}
                     task={task}
                     auxiliaryLabel={aux}
-                    auxiliaryVariant={auxVariant}
                     displayTitle={displayTitle}
                   />
                 );

@@ -59,6 +59,8 @@ export default function TodayPage() {
   const { data: cultures = [] }      = useCultures();
   const typeNames    = activityTypes.map((t) => t.name);
   const cultureNames = cultures.map((c) => c.name);
+  const typeColorMap    = Object.fromEntries(activityTypes.map((t) => [t.name, t.color]));
+  const cultureColorMap = Object.fromEntries(cultures.map((c) => [c.name, c.color]));
 
   const changeMode  = (m: KanbanMode) => { setMode(m);  localStorage.setItem(MODE_KEY, m); };
   const changeDelta = (d: DateDelta)  => { setDelta(d); localStorage.setItem(DELTA_KEY, String(d)); };
@@ -141,18 +143,7 @@ export default function TodayPage() {
   const typeTags    = sortedByFrequency(typeNames.length > 0 ? typeNames : []);
   const cultureTags = sortedByFrequency(cultureNames.length > 0 ? cultureNames : []);
 
-  const typeChipClass = clsx(
-    "shrink-0 cursor-grab active:cursor-grabbing rounded border px-2 py-0.5 text-xs select-none transition-colors",
-    mode === "culture"
-      ? "border-stone-200 bg-stone-50 text-stone-400 hover:border-stone-300"
-      : "border-stone-200 bg-stone-50 text-stone-600 hover:border-green-400 hover:bg-green-50 hover:text-green-800"
-  );
-  const cultureChipClass = clsx(
-    "shrink-0 cursor-grab active:cursor-grabbing rounded border px-2 py-0.5 text-xs select-none transition-colors",
-    mode === "type"
-      ? "border-stone-200 bg-stone-50 text-stone-400 hover:border-stone-300"
-      : "border-stone-200 bg-amber-50 text-amber-700 hover:border-amber-400 hover:bg-amber-100"
-  );
+  const chipClass = "shrink-0 inline-flex items-center gap-1 cursor-grab active:cursor-grabbing rounded border border-stone-200 bg-white px-2 py-0.5 text-xs text-stone-600 select-none transition-colors hover:border-stone-400 hover:text-stone-800 disabled:opacity-40";
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
@@ -203,26 +194,32 @@ export default function TodayPage() {
         </div>
 
         {/* Tag bar */}
-        <div className="flex items-center gap-1.5 px-4 py-1 border-b border-stone-100 overflow-x-auto scrollbar-none">
-          <span className="text-[11px] text-stone-400 shrink-0 font-medium">Tipo:</span>
+        <div className="flex items-center gap-1.5 px-4 py-1.5 border-b border-stone-100 overflow-x-auto scrollbar-none">
           {typeTags.map((tag) => (
             <button key={tag} draggable
               onDragStart={(e) => { e.dataTransfer.setData("tag", tag); e.dataTransfer.effectAllowed = "copy"; }}
               onClick={() => { incrementTagFrequency(tag); quickCreate.mutate(tag); }}
               onContextMenu={(e) => { e.preventDefault(); openCreate(tag); }}
               disabled={quickCreate.isPending}
-              className={typeChipClass}>{tag}
+              className={chipClass}
+            >
+              {typeColorMap[tag] && <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: typeColorMap[tag] }} />}
+              {tag}
             </button>
           ))}
-          <span className="w-px h-4 bg-stone-200 mx-1 shrink-0" />
-          <span className="text-[11px] text-stone-400 shrink-0 font-medium">Cultura:</span>
+          {typeTags.length > 0 && cultureTags.length > 0 && (
+            <span className="w-px h-4 bg-stone-200 mx-0.5 shrink-0" />
+          )}
           {cultureTags.map((tag) => (
             <button key={tag} draggable
               onDragStart={(e) => { e.dataTransfer.setData("tag", tag); e.dataTransfer.effectAllowed = "copy"; }}
               onClick={() => { incrementTagFrequency(tag); quickCreate.mutate(tag); }}
               onContextMenu={(e) => { e.preventDefault(); openCreate(tag); }}
               disabled={quickCreate.isPending}
-              className={cultureChipClass}>{tag}
+              className={chipClass}
+            >
+              {cultureColorMap[tag] && <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: cultureColorMap[tag] }} />}
+              {tag}
             </button>
           ))}
         </div>
@@ -311,7 +308,7 @@ export default function TodayPage() {
             ))}
           </div>
         ) : (
-          <KanbanView tasks={kanbanTasks} mode={mode} dateDelta={delta} onAddTask={openCreate} typeNames={typeNames} cultureNames={cultureNames} />
+          <KanbanView tasks={kanbanTasks} mode={mode} dateDelta={delta} onAddTask={openCreate} typeNames={typeNames} cultureNames={cultureNames} typeColors={typeColorMap} cultureColors={cultureColorMap} />
         )}
 
         {/* Completed strip — hidden when already shown in kanban */}
