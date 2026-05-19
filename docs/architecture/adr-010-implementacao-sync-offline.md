@@ -1,7 +1,10 @@
 # ADR-010: Implementação Técnica do Sync Offline
 
 ## Status
-Accepted
+Accepted — com revisão parcial em 2026-05-13 (job de lock de conclusão removido; ver "Lock de conclusão" abaixo)
+
+## Implementação
+O modelo de campos no schema (`device_id`, `version`, `deleted_at`, `updated_at`, `dependency_ids`) está implementado no modelo `Task` (ver `src/api/app/models/task.py`). O **operation log no servidor, WebSocket de stream, Dexie no cliente e endpoint `/api/sync` ainda não foram implementados** — o produto opera no modelo online-first com banco único (PostgreSQL/Supabase). A implementação completa virá quando o cenário de uso offline no campo for priorizado.
 
 ## Context
 ADR-002 estabeleceu o **modelo conceitual** do sync offline: LWW por campo + operation log append-only. Este ADR define o **como** — quais bibliotecas, quais protocolos, quais estruturas de dados concretas — para que a implementação seja consistente e não reinvente o que já existe maduro.
@@ -133,13 +136,8 @@ def apply_task_operation(op: Operation, session: Session) -> ApplyResult:
         return ApplyResult(accepted=True)
 
     if op.operation == "complete":
-        if task.completion_locked:
-            return ApplyResult(
-                accepted=False,
-                rejection_reason="completion_locked"
-            )
+        # Sem lock — reabertura é sempre permitida via /restore (decisão 2026-05-13)
         task.completed_at = op.timestamp
-        # Lock será aplicado em background após COMPLETION_UNDO_WINDOW
         return ApplyResult(accepted=True)
 
     if op.operation == "update":
@@ -210,12 +208,15 @@ def resolve_field_conflict(
 
 Conflitos detectados (`ConflictLog` não-nulo) são persistidos em `conflict_audit_log` e ficam acessíveis ao usuário por 30 dias (PRD ADR-002 — indicador visual de sync).
 
-### Lock de conclusão (após janela de undo)
+### Lock de conclusão (REVISADO em 2026-05-13)
 
-Job em background:
-- A cada minuto, busca tarefas com `completed_at IS NOT NULL AND completion_locked = false AND completed_at < now - COMPLETION_UNDO_WINDOW`
-- Atualiza `completion_locked = true` em transação
-- Propaga via WebSocket para clientes conectados (para esconder o botão "Desfazer")
+Originalmente este ADR previa job em background que fechava a janela de undo após 5 min, aplicando `completion_locked = true`. **Removido em 2026-05-13** junto com a janela de undo (ver [[adr-002-sync-offline]] e `docs/diario/2026-05-13.md`).
+
+Estado atual:
+- O campo `completion_locked` no modelo Task continua existindo como vestigial (sempre `false`) para evitar breaking change de schema.
+- Não há job em background relacionado à conclusão.
+- Reabertura de tarefa concluída é livre via `POST /tasks/{id}/restore`.
+- O undo via UI é apenas affordance de toast (curto, ~10s), sem enforcement no servidor.
 
 ### Não-objetivos explícitos
 

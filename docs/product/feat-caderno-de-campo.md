@@ -62,7 +62,7 @@ Capturar todo o conhecimento gerado na propriedade — estruturado ou não — e
 - AC-5: Entradas criadas offline ficam em fila local com indicador visual de "pendente de sync" e sincronizam automaticamente ao reconectar.
 
 **Entradas automáticas**
-- AC-6: Ao concluir uma tarefa na Agenda, uma entrada é criada automaticamente no caderno com: título da tarefa, executor, data/hora de conclusão e justificativa de adiamento (se houver histórico de adiamentos).
+- AC-6: Ao concluir uma tarefa na Agenda, uma entrada é criada automaticamente no caderno com: título da tarefa, executor, data/hora de conclusão, **observação opcional informada no `CompleteModal`** (textarea com autofocus, Ctrl+Enter confirma) e justificativa de adiamento (se houver histórico). Implementado em 2026-05-18 — ver `docs/diario/2026-05-18.md`.
 - AC-7: Ao registrar uma colheita no módulo Culturas, uma entrada é criada automaticamente com: cultura, unidade de gestão, data, quantidades registradas e executor.
 - AC-8: Entradas automáticas são marcadas visualmente como "gerado automaticamente" e não podem ser editadas — apenas complementadas com uma observação adicional.
 

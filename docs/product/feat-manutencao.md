@@ -95,4 +95,6 @@ Construir o histórico de manutenção de todos os equipamentos e estruturas da 
 
 - [[feat-agenda]] — alertas de manutenção vencida geram tarefas automáticas na ordem do dia
 - [[feat-compras]] — alertas preventivos com peças identificadas alimentam a lista de compras proativa
+- [[feat-caderno-de-campo]] — registros de manutenção viram entradas automáticas no caderno (AC-6)
+- [[adr-001-algoritmo-priorizacao-agenda]] — tarefas de manutenção geradas com `scheduled_window_end` alimentam timing_score
 - [[adr-013-notificacoes-multicanal]] — alertas de manutenção atrasada entregues via push/e-mail/WhatsApp

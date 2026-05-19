@@ -124,3 +124,5 @@ Mitigação do lock-in:
 
 - [[feat-mapa]] — todos os ACs do módulo Mapa dependem deste ADR
 - [[feat-onboarding]] — AC-22: importação KML da propriedade usa `@tmcw/togeojson`
+- [[feat-culturas]] — talhões do mapa são vinculados às culturas e ciclos
+- [[adr-003-controle-acesso-por-cultura]] — usuários com filtro de cultura veem apenas áreas das suas culturas permitidas

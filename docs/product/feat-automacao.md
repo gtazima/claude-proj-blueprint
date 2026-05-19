@@ -110,5 +110,7 @@ Integrar sensores e dispositivos de automação da propriedade ao AgroecologIA, 
 
 - [[feat-mapa]] — sensores e dispositivos aparecem como marcadores no mapa com dados em tempo real
 - [[feat-manutencao]] — alertas de sensor offline geram itens de manutenção preventiva
+- [[feat-caderno-de-campo]] — acionamentos por regra condicional geram entradas (AC-10)
+- [[feat-agenda]] — sensores fora de faixa geram tarefas com prioridade calculada pela severidade (AC-2)
 - [[adr-013-notificacoes-multicanal]] — alertas de sensor (offline, threshold) entregues via push/e-mail/WhatsApp
 - [[adr-002-sync-offline]] — leituras de sensores seguem modelo append-only; séries temporais aguardam ADR-007

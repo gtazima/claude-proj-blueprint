@@ -216,4 +216,29 @@ Esse seria o impacto imediato no dia a dia — substituir a memória humana por 
 ## Links
 - Repo: [a definir]
 - Design: [a definir]
-- Production: [a definir]
+- Production:
+  - Frontend: https://agroecologia.g-tazima.workers.dev (Cloudflare Workers)
+  - Backend: https://agroecologia.onrender.com (Render free tier)
+  - Banco: Supabase PostgreSQL
+
+## Relacionados
+
+### PRDs por módulo
+- [[feat-agenda]] — Ordem do dia, priorização, agenda futura, integração WhatsApp
+- [[feat-culturas]] — Cultura, lote/talhão/enxame, ciclos, colheita, geração de tarefas
+- [[feat-caderno-de-campo]] — Registro de observações, entradas automáticas, sugestões da IA
+- [[feat-manutencao]] — Equipamentos, manutenções preventivas, lista de compras proativa
+- [[feat-financeiro]] — Integração bancária, classificação por IA, custo por ciclo
+- [[feat-gmail-financeiro]] — Leitura de e-mails bancários para alimentar Financeiro
+- [[feat-vendas]] — Clientes, pedidos, estoque para venda, geração de conteúdo por IA
+- [[feat-mapa]] — Visão geográfica integrada da propriedade
+- [[feat-automacao]] — Sensores, controle remoto, automações condicionais
+- [[feat-compras]] — Lista de compras com sync bidirecional Google Tasks
+- [[feat-google-tasks-sync]] — Integração com a conta Google da propriedade
+- [[feat-onboarding]] — Tempo até primeiro valor < 5 min; setup assistido por IA
+
+### Decisões arquiteturais críticas
+- [[adr-001-algoritmo-priorizacao-agenda]] — score timing×1000 + dependência×100 + financeiro×10
+- [[adr-003-controle-acesso-por-cultura]] — RBAC + filtro por cultura (parceiros de meliponicultura)
+- [[adr-004-camada-ia-plugavel]] — interface `AIProvider` + adapters
+- [[adr-011-provedor-ia-capacity-planning]] — DeepSeek como default; custo ~$1-15/mês/usuário ativo

@@ -99,5 +99,7 @@ Oferecer uma visão geográfica integrada da propriedade onde o produtor vê o e
 
 - [[adr-014-biblioteca-de-mapas]] — decisão Mapbox GL JS; plano de saída para MapLibre
 - [[adr-003-controle-acesso-por-cultura]] — usuários com filtro de cultura veem apenas áreas das suas culturas permitidas
+- [[adr-002-sync-offline]] — AC-12 e AC-13: mapa offline com última versão cacheada
 - [[feat-automacao]] — sensores e dispositivos aparecem como marcadores com dados em tempo real
 - [[feat-culturas]] — talhões do mapa são vinculados a culturas e ciclos
+- [[feat-agenda]] — alertas visuais no mapa (AC-5, AC-6) levam à tarefa pendente

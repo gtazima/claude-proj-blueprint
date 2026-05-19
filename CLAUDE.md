@@ -5,39 +5,62 @@ Assistente de gestão integrada para pequenas propriedades agroecológicas. Atua
 Ver `docs/product/vision.md` para a visão completa do produto.
 
 ## Tech Stack
-- **Frontend:** React + Vite (TypeScript) — PWA (cobre desktop e mobile)
-- **Backend:** Python + FastAPI
-- **Banco local (offline):** SQLite — sincroniza quando conectado
-- **Banco nuvem:** PostgreSQL + extensão TimescaleDB para séries temporais de sensores
-- **IA:** Camada plugável com 4 provedores de primeira classe — Claude, Gemini, OpenAI, DeepSeek. Default configurável por instalação. Atualmente: **DeepSeek** (preferência do produtor + custo agressivo); pode ser trocado para Gemini se o critério for "maior free tier sustentado". Ver ADR-011.
-- **Embeddings:** Gemini `text-embedding-004` (free tier nativo) ou Voyage AI quando provedor ativo for Claude. Provedores sem embeddings nativos delegam automaticamente.
-- **Transcrição offline:** Whisper local (~150MB, modelo `base` ou `small` para PT-BR)
-- **WhatsApp:** Evolution API (self-hosted) — envio da ordem do dia para o funcionário
-- **Autenticação:** Supabase Auth
-- **Mapas:** Mapbox GL JS ou Leaflet (decisão pendente — ADR a escrever)
-- **IoT — protocolo:** MQTT + HTTP REST como base (broker self-hosted Mosquitto vs. gerenciado — decisão pendente)
-- **IoT — hardware:** stack a definir conforme escolha do produtor
-- **Backup:** Google Drive como destino de backup automático com export disponível
-- **Testes:** Pytest (backend) + Vitest (frontend)
-- **Package manager:** pnpm (frontend) + uv (backend)
+- **Frontend:** React + Vite (TypeScript) — PWA com `vite-plugin-pwa` (NetworkFirst para `/api`)
+- **Backend:** Python + FastAPI + SQLModel
+- **Banco em produção:** Supabase PostgreSQL (pooler IPv4)
+- **Banco em testes/dev:** SQLite em memória ou arquivo local
+- **Sync offline (planejado):** Dexie/IndexedDB no cliente + operation log no servidor — ver [[adr-002-sync-offline]] e [[adr-010-implementacao-sync-offline]] (ainda não implementado em código)
+- **Séries temporais de sensores (planejado):** PostgreSQL + extensão TimescaleDB — aguarda ADR-007 e implementação do módulo Automação
+- **IA (planejado):** Camada plugável com 4 provedores de primeira classe — Claude, Gemini, OpenAI, DeepSeek. Default sugerido **DeepSeek** (preferência do produtor + custo agressivo). Ver [[adr-004-camada-ia-plugavel]] e [[adr-011-provedor-ia-capacity-planning]]. Adapters em `src/ai/` ainda não implementados.
+- **Embeddings (planejado):** Gemini `text-embedding-004` (free tier) ou Voyage AI quando provedor ativo for Claude.
+- **Transcrição offline (planejado):** Whisper local (~150MB, modelo `base`/`small` PT-BR).
+- **WhatsApp (planejado):** Evolution API (self-hosted) — envio da ordem do dia para o funcionário. Não integrado ainda.
+- **Autenticação:** Supabase Auth (JWT HS256, audience `authenticated`) — implementado. Ver [[adr-009-autenticacao]].
+- **Integração Google Tasks:** OAuth 2.0 + sync instantâneo via `BackgroundTasks` + polling 60s de fallback — implementado. Ver [[feat-google-tasks-sync]].
+- **Mapas (planejado):** Mapbox GL JS — escolhido em [[adr-014-biblioteca-de-mapas]]. Implementação aguarda o módulo Mapa.
+- **IoT — protocolo:** MQTT + HTTP REST como base (broker self-hosted Mosquitto vs. gerenciado — decisão pendente ADR-006).
+- **IoT — hardware:** stack a definir conforme escolha do produtor (ADR-006 pendente).
+- **Backup:** Google Drive como destino — projeto definido em [[adr-012-backup-google-drive]], não implementado.
+- **Testes:** Pytest (backend, 78 testes passando) + Vitest (frontend).
+- **Package manager:** pnpm (frontend) + uv (backend).
+- **Deploy:** Cloudflare Workers (frontend) + Render free tier (backend, Docker) + Supabase (banco).
 
 ## Architecture
+
+### Estrutura atual (implementada)
 
 ```
 /
 ├── src/
-│   ├── web/          → PWA React (frontend)
-│   ├── api/          → FastAPI (backend)
-│   ├── ai/           → camada de IA plugável (adapters por provedor)
-│   ├── workers/      → jobs assíncronos (sync offline, WhatsApp, alertas)
-│   └── shared/       → tipos e contratos compartilhados
+│   ├── web/                       → PWA React + Vite (frontend)
+│   │   └── src/{api,components,contexts,hooks,pages,constants,lib}/
+│   └── api/                       → FastAPI + SQLModel (backend)
+│       ├── main.py
+│       ├── app/
+│       │   ├── api/routes/        → tasks, field_notes, config, settings
+│       │   ├── core/              → config, settings
+│       │   ├── db/                → session
+│       │   ├── models/            → task, fieldnote, config, property_settings
+│       │   ├── schemas/           → Pydantic schemas
+│       │   └── services/          → tasks, field_notes, prioritization, google_sync, google_oauth, config
+│       ├── migrations/            → SQL migrations (manuais)
+│       └── tests/                 → pytest (78 testes)
 ├── docs/             → Obsidian vault
 │   ├── product/      → visão, PRDs, personas, roadmap
 │   ├── architecture/ → ADRs
 │   ├── specs/        → especificações modulares
+│   ├── diario/       → diários de sessão
 │   └── runbooks/     → deploy, debug, onboarding, post-mortems
 ├── .claude/          → skills, commands, agents, hooks
-└── memory/           → memória de longo prazo entre sessões
+└── memory/           → memória de longo prazo entre sessões (índice/backends/query)
+```
+
+### Estrutura planejada (futura — não implementada)
+
+```
+src/
+├── ai/                            → camada plugável (interface AIProvider + adapters por provedor — ADR-004/011)
+└── workers/                       → jobs assíncronos (WhatsApp, alertas, sync — ADR-002/010, ADR-013)
 ```
 
 ### Decisões arquiteturais críticas
@@ -176,3 +199,22 @@ Memória semântica de longo prazo para decisões, padrões e contexto entre ses
 - Buscar: `python memory/query.py "consulta"`
 - Incremental: `python memory/index.py --incremental`
 - Config: `memory/config.yaml`
+
+## Relacionados
+
+### Documento de visão
+- [[vision]] — propósito, problema, domínios, personas, MVP, success metrics
+
+### PRDs (docs/product/)
+- [[feat-agenda]] · [[feat-culturas]] · [[feat-caderno-de-campo]] · [[feat-manutencao]]
+- [[feat-financeiro]] · [[feat-gmail-financeiro]] · [[feat-vendas]] · [[feat-mapa]]
+- [[feat-automacao]] · [[feat-compras]] · [[feat-google-tasks-sync]] · [[feat-onboarding]]
+
+### ADRs (docs/architecture/)
+- [[adr-001-algoritmo-priorizacao-agenda]] · [[adr-002-sync-offline]] · [[adr-003-controle-acesso-por-cultura]]
+- [[adr-004-camada-ia-plugavel]] · [[adr-005-integracao-bancaria]] · [[adr-008-estrategia-de-testes]]
+- [[adr-009-autenticacao]] · [[adr-010-implementacao-sync-offline]] · [[adr-011-provedor-ia-capacity-planning]]
+- [[adr-012-backup-google-drive]] · [[adr-013-notificacoes-multicanal]] · [[adr-014-biblioteca-de-mapas]]
+- [[adr-015-moderacao-conteudo-ia]]
+
+ADRs pendentes (aguardando decisão externa): ADR-006 (stack IoT), ADR-007 (séries temporais).

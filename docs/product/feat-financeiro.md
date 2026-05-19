@@ -113,7 +113,10 @@ Dar ao produtor uma visão clara do custo real por cultura e por ciclo, do fluxo
 ## Relacionados
 
 - [[adr-005-integracao-bancaria]] — estratégia OFX/CSV + e-mail no MVP, Open Finance pós-MVP
-- [[feat-gmail-financeiro]] — alimenta este módulo com transações extraídas de e-mails bancários
+- [[adr-009-autenticacao]] — tokens OAuth bancários armazenados com criptografia AES-GCM por usuário
 - [[adr-004-camada-ia-plugavel]] — classificação de transações usa esta camada (AC-5, AC-7)
+- [[adr-011-provedor-ia-capacity-planning]] — classificação bancária é caso de uso de alta frequência; prompt caching reduz custo
 - [[adr-015-moderacao-conteudo-ia]] — confidence threshold de classificação automática definido aqui
+- [[feat-gmail-financeiro]] — alimenta este módulo com transações extraídas de e-mails bancários
 - [[feat-culturas]] — custo por ciclo requer junção entre transações e unidades de gestão de culturas
+- [[feat-vendas]] — receitas de consignação confirmadas aqui após pagamento

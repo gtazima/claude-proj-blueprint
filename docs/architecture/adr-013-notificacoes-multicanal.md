@@ -175,7 +175,9 @@ Permite auditoria: "por que não recebi alerta sobre X?" → consultar log.
 
 ## References
 
-- [[feat-agenda]] — fonte de alertas de tarefas atrasadas ou urgentes
+- [[feat-agenda]] — fonte de alertas de tarefas atrasadas ou urgentes; envio matinal ao WhatsApp
 - [[feat-manutencao]] — fonte de alertas preventivos de equipamentos
 - [[feat-automacao]] — fonte de alertas de sensor offline ou threshold excedido
+- [[feat-onboarding]] — consentimento de push notifications como passo opcional no checklist
 - [[adr-009-autenticacao]] — `device_sessions` armazena push subscriptions
+- [[adr-012-backup-google-drive]] — alerta de "Backup falhou" usa este pipeline

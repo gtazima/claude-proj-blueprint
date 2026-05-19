@@ -154,4 +154,6 @@ banks:
 
 - [[feat-financeiro]] — AC-1 a AC-4 dependem diretamente deste ADR
 - [[feat-gmail-financeiro]] — especializa este ADR para extração de e-mails bancários
+- [[feat-onboarding]] — conexão Gmail no marco crítico dos primeiros 30 dias
 - [[adr-009-autenticacao]] — tokens OAuth Gmail criptografados conforme política deste ADR
+- [[adr-004-camada-ia-plugavel]] — extração via IA quando parser estruturado falha

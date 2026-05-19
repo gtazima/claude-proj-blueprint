@@ -29,7 +29,7 @@ Substituir a memória humana por uma visão estruturada e confiável do que prec
 
 ## Not Doing (e por quê)
 
-- **Campo de impacto financeiro na criação de tarefas** — o agricultor não pensa em "impacto 3/5" ao criar uma tarefa; isso gera fricção sem valor. O peso financeiro é propriedade do *tipo de atividade*, não da instância. Decisão: `financial_score` existe no modelo de dados (para quando o mecanismo estiver pronto), mas é sempre 0 no MVP. O preenchimento virá via: (1) configuração admin de tipos de atividade com pesos padrão; (2) calibração automática pelo modelo de IA observando custo/hora por executor e padrões de impacto real. Ver iteração de admin de tipos de atividade.
+- **Campo de impacto financeiro como obrigatório na criação de tarefas** — o agricultor não pensa em "impacto 3/5" ao criar toda tarefa; isso geraria fricção sem valor. `financial_score` existe no modelo (0-5, default 0) e é preenchível manualmente quando o produtor sabe que aquela tarefa específica desbloqueia receita ou evita perda — ver [[adr-001-algoritmo-priorizacao-agenda]]. Calibração automática (via tipo de atividade com pesos padrão ou observação por IA) é evolução futura quando o módulo Financeiro estiver integrado.
 - **Geração automática de tarefas a partir de ciclos de culturas** — o módulo Culturas ainda não existe; a agenda neste PRD trabalha com tarefas criadas manualmente ou via linguagem natural. A integração entre Culturas e Agenda vem em PRD posterior.
 - **Notificações push** — o canal principal do funcionário é WhatsApp; para o produtor e pai, a abertura do app pela manhã é o comportamento esperado no MVP. Push notifications adicionam complexidade sem valor comprovado agora.
 - **Reordenação livre por arrastar e soltar** — o usuário não reorganiza a lista livremente. O override é feito por tarefa individualmente: o produtor adia uma tarefa com justificativa (ex: "vai chover até sexta"), e o sistema reposiciona as demais. Drag-and-drop genérico sem contexto não agrega valor e pode mascarar urgências reais.
@@ -63,8 +63,9 @@ Substituir a memória humana por uma visão estruturada e confiável do que prec
 - AC-6: Tarefas criadas offline ficam em fila local e são sincronizadas automaticamente quando a conexão retornar.
 
 **Conclusão e caderno de campo**
-- AC-7: Ao marcar uma tarefa como concluída, uma entrada é criada automaticamente no caderno de campo com: título, executor, data/hora de conclusão.
+- AC-7: Ao marcar uma tarefa como concluída, o produtor pode opcionalmente adicionar uma observação (`CompleteModal` com textarea, Ctrl+Enter confirma). Uma entrada é criada automaticamente no caderno de campo com: título, executor, data/hora de conclusão, observação (se informada) e justificativa de adiamento (se houver histórico). Ver [[feat-caderno-de-campo]] AC-6.
 - AC-8: A tarefa concluída sai da lista do dia e aparece na seção "Concluído hoje" até meia-noite.
+- AC-8b: A reabertura de tarefa concluída é sempre possível (sem janela de tempo) via `POST /tasks/{id}/restore` — decisão atualizada em 2026-05-13 substituindo o lock de 5min originalmente previsto em [[adr-002-sync-offline]].
 
 **Agenda de horizonte futuro**
 - AC-9: O usuário consegue visualizar tarefas agendadas para os próximos 7, 30 e 90 dias em uma tela de agenda.

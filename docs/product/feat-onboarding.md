@@ -196,5 +196,10 @@ Sem checklist de configuração para convidados. O admin é quem configura; conv
 - [[adr-009-autenticacao]] — AC-1, AC-16, AC-17: fluxo de sign-up, convites, setup de dispositivo
 - [[adr-012-backup-google-drive]] — consentimento para Drive faz parte do fluxo Google Sign-In
 - [[adr-014-biblioteca-de-mapas]] — AC-22: importação KML da propriedade no onboarding
+- [[adr-004-camada-ia-plugavel]] — setup assistido pela IA (AC-4, AC-5, AC-6) usa esta camada
+- [[adr-011-provedor-ia-capacity-planning]] — checklist pode oferecer escolha de provedor com comparação de free tiers
+- [[adr-013-notificacoes-multicanal]] — consentimento de push notifications como passo opcional no checklist
 - [[feat-gmail-financeiro]] — conexão Gmail é marco crítico dos primeiros 30 dias
 - [[feat-culturas]] — cadastro de culturas e ciclos é marco crítico do onboarding
+- [[feat-agenda]] — primeira tarefa por voz em ≤60s após sign-up (AC-3)
+- [[vision]] — métrica de tempo até primeiro valor < 5 minutos

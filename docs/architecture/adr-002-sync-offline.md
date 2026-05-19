@@ -1,7 +1,7 @@
 # ADR-002: Estratégia de Sync Offline
 
 ## Status
-Accepted
+Accepted — com revisão parcial em 2026-05-13 (janela de undo de 5min removida; ver seção "Conclusão de tarefas" abaixo)
 
 ## Context
 A propriedade tem excelente conectividade na casa sede e oficina, mas sem cobertura no campo. O produtor registra observações, conclui tarefas e colheitas diretamente no campo — sem internet. Esses dados precisam ser persistidos localmente e sincronizados ao retornar à área com conexão, sem perda e sem conflitos silenciosos.
@@ -54,15 +54,15 @@ Quando o servidor recebe operações conflitantes (mesma entidade modificada em 
 2. Campos não modificados por nenhum dos lados não são afetados.
 3. O servidor grava o estado resultante e propaga para todos os dispositivos.
 
-**Operações de conclusão de tarefa — janela de undo:** conclusão tem uma janela de 5 minutos durante a qual pode ser revertida pelo mesmo usuário no mesmo dispositivo. Após esse prazo, a conclusão é considerada definitiva e tem precedência sobre qualquer edição posterior — ela permanece concluída independente de timestamp. Isso protege contra cliques acidentais sem permitir "desconclusão" silenciosa por sync após o fato.
+**Operações de conclusão de tarefa — janela de undo (REVISADO em 2026-05-13):**
 
-A entidade tarefa carrega:
-```
-completed_at:        timestamp UTC nullable
-completion_locked:   boolean (true após 5 minutos da conclusão — bloqueia revert)
-```
+Originalmente este ADR previa janela de 5 minutos com `completion_locked = true` após o prazo. Essa restrição foi **removida em 2026-05-13** após dogfooding: reabrir tarefa precisava ser sempre possível (cenário real: o produtor descobre dias depois que a tarefa não foi de fato concluída).
 
-O cliente exibe botão "Desfazer" por 5 minutos após marcar como concluída. Após o lock, a tarefa só pode voltar à lista por uma operação explícita de "reabrir tarefa" — que é uma ação distinta no log de operações, não um simples undo.
+Decisão atualizada:
+- A entidade tarefa mantém `completed_at: datetime | None` (timestamp de conclusão) e `completion_locked: bool` (vestigial — sempre false; mantido no schema para compatibilidade de sync).
+- `POST /tasks/{id}/restore` reabre a tarefa concluída a qualquer momento, sem janela.
+- O cliente exibe undo via toast por ~10s após cada ação destrutiva (via `UndoContext`), mas o backend não impõe limite — é apenas affordance de UX.
+- LWW por campo (timestamp mais recente vence) aplica-se a `completed_at` como qualquer outro campo.
 
 ### Fluxo de sync
 
@@ -74,7 +74,7 @@ O cliente exibe botão "Desfazer" por 5 minutos após marcar como concluída. Ap
 5. Marca operações como `synced = true`
 
 **Online → Offline (receber mudanças do servidor):**
-1. App mantém conexão SSE (Server-Sent Events) quando online para receber push de mudanças em tempo real
+1. App mantém conexão real-time (canal de stream) quando online para receber push de mudanças. Decisão técnica entre WebSocket e SSE está em [[adr-010-implementacao-sync-offline]] — WebSocket foi escolhido por permitir envio bidirecional.
 2. Ao conectar após período offline, solicita todas as operações do servidor desde `last_sync_timestamp`
 3. Aplica as operações recebidas com a mesma regra LWW
 

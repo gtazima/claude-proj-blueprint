@@ -165,4 +165,6 @@ Em qualquer momento, o usuário pode exportar todos os seus dados em um zip não
 - [[adr-009-autenticacao]] — política de criptografia AES-GCM usada nos backups
 - [[adr-005-integracao-bancaria]] — OAuth Google reutilizado; tokens armazenados conforme este ADR
 - [[adr-002-sync-offline]] — operation log e snapshots incluídos no backup
+- [[adr-013-notificacoes-multicanal]] — alerta de "Backup falhou" entregue via push/e-mail
 - [[feat-onboarding]] — consentimento para Drive faz parte do fluxo Google Sign-In
+- [[feat-caderno-de-campo]] — entradas (texto + áudio + foto) incluídas no backup

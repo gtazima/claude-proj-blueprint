@@ -8,7 +8,7 @@ REST.
 
 `/api/v1`
 
-> **Migração pendente:** o backend atual usa `/api` sem versionamento. Todas as rotas e o frontend devem ser atualizados para `/api/v1` na próxima sessão de refatoração. Ver CLAUDE.md Gotchas para rastrear o status.
+> Migração `/api` → `/api/v1` concluída em 2026-05-15 (backend + frontend + `.env.production`).
 
 ## Authentication
 

@@ -22,7 +22,7 @@ Dar ao produtor um repositório único para itens a comprar — com histórico d
   - Item na lista Google Tasks que não existe no AgroecologIA → entra no módulo Compras
   - Item marcado como comprado no AgroecologIA → marcado como concluído no Google Tasks
   - Item marcado como concluído no Google Tasks → marcado como comprado no AgroecologIA
-- [ ] Reutiliza o worker de sync do PRD Google Calendar/Tasks para a sincronização
+- [ ] Reutiliza o worker de sync de [[feat-google-tasks-sync]] para a sincronização (push_task_now + polling de reconciliação)
 
 ### Excludes
 - [ ] Integração com e-commerces ou sistemas de pedido automático
@@ -84,14 +84,14 @@ Dar ao produtor um repositório único para itens a comprar — com histórico d
 - AC-16: O produtor pode pesquisar no histórico de itens comprados por nome.
 
 **Integração com worker de sync**
-- AC-17: O sync de Compras usa o mesmo worker assíncrono da integração Google Calendar/Tasks (PRD `feat-google-calendar-tasks-sync`). A lista "lista de compras" é gerenciada de forma independente da lista "AgroecologIA".
+- AC-17: O sync de Compras usa o mesmo worker assíncrono da integração Google Tasks (ver [[feat-google-tasks-sync]]). A lista "lista de compras" é gerenciada de forma independente da lista "AgroecologIA".
 - AC-18: Falhas de sync do módulo Compras são logadas de forma isolada e não afetam o sync de tarefas.
 
 ## Technical Decisions
-- A lista "lista de compras" no Google Tasks é criada automaticamente na primeira autenticação OAuth (reutiliza o fluxo do PRD Google Calendar/Tasks). Criação idempotente — verificar se já existe antes de criar.
+- A lista "lista de compras" no Google Tasks é criada automaticamente na primeira autenticação OAuth (reutiliza o fluxo de [[feat-google-tasks-sync]]). Criação idempotente — verificar se já existe antes de criar.
 - Modelo de dados novo: tabela `purchase_items` com campos: `id`, `property_id`, `name`, `notes`, `status` (enum: `to_buy`, `bought`), `created_at`, `bought_at`, `google_task_id`.
 - Tabela auxiliar `purchase_item_links` com campos: `id`, `purchase_item_id`, `url`, `created_at` — relação N:1 com `purchase_items`.
-- Sincronização usa o mesmo mecanismo de polling do PRD `feat-google-calendar-tasks-sync`; o worker precisa suportar múltiplas listas do Google Tasks.
+- Sincronização usa o mesmo mecanismo de [[feat-google-tasks-sync]] (push instantâneo + polling de reconciliação); o worker precisa suportar múltiplas listas do Google Tasks.
 - A dependência do worker de sync Google é obrigatória — o módulo Compras requer que a integração Google Tasks esteja ativada e autenticada.
 - Registrar decisão de modelo de dados separado vs. extensão do modelo Task em ADR (purchase_items não é uma Task — não tem executor, prioridade, timing biológico ou integração com Caderno de Campo).
 
@@ -109,7 +109,7 @@ Dar ao produtor um repositório único para itens a comprar — com histórico d
 - [ ] Migração de banco: criar tabelas `purchase_items` e `purchase_item_links`
 - [ ] Criar lista "lista de compras" no Google Tasks na primeira ativação (idempotente)
 - [ ] Rollback: desativar feature flag; tabelas permanecem mas módulo fica inacessível; lista no Google Tasks permanece mas para de ser sincronizada
-- [ ] Dependência: requer PRD `feat-google-calendar-tasks-sync` implementado e autenticação Google ativa
+- [ ] Dependência: requer [[feat-google-tasks-sync]] implementado e autenticação Google ativa
 
 ## Métricas de Sucesso
 - Número de itens criados por semana (indica adoção do módulo como substituto das listas informais)
