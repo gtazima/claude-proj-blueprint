@@ -8,6 +8,7 @@ import CadernoPage from "./pages/Caderno.tsx";
 import TarefasPage from "./pages/Today.tsx";
 import SettingsPage from "./pages/Settings.tsx";
 import GoogleCallbackPage from "./pages/GoogleCallback.tsx";
+import ComprasPage from "./pages/Compras.tsx";
 
 function ProtectedRoutes() {
   const { session, loading } = useAuth();
@@ -31,6 +32,7 @@ function ProtectedRoutes() {
         <Route path="/agenda"                         element={<AgendaPage />} />
         <Route path="/caderno"                        element={<CadernoPage />} />
         <Route path="/tarefas"                        element={<TarefasPage />} />
+        <Route path="/compras"                        element={<ComprasPage />} />
         <Route path="/configuracoes"                  element={<SettingsPage />} />
         <Route path="/configuracoes/google/callback"  element={<GoogleCallbackPage />} />
       </Routes>

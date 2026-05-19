@@ -9,6 +9,7 @@ class FieldNoteCreate(BaseModel):
     culture: str | None = None
     management_unit: str | None = None
     executor: str | None = None
+    entry_type: str = Field(default="manual", pattern=r"^(manual|feedback)$")
 
 
 class FieldNoteRead(BaseModel):

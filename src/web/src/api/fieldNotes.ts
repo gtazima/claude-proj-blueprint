@@ -24,7 +24,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 export interface FieldNote {
   id: string;
   content: string;
-  entry_type: "manual" | "task_completed";
+  entry_type: "manual" | "task_completed" | "feedback";
   source_task_id: string | null;
   culture: string | null;
   management_unit: string | null;
@@ -41,6 +41,7 @@ export interface CreateFieldNotePayload {
   culture?: string | null;
   management_unit?: string | null;
   executor?: string | null;
+  entry_type?: "manual" | "feedback";
 }
 
 export interface FieldNoteFilters {

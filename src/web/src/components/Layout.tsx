@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { NavLink } from "react-router-dom";
 import clsx from "clsx";
 import { useAuth } from "../contexts/AuthContext";
+import FeedbackWidget from "./FeedbackWidget";
 
 const MODULES = [
   {
@@ -49,6 +50,16 @@ const MODULES = [
     ready: true,
   },
   {
+    to: "/compras",
+    label: "Compras",
+    icon: (
+      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-4 w-4">
+        <path d="M3 3h2l.4 2M7 13h10l2-8H5.4M7 13L5.4 5M7 13a2 2 0 100 4 2 2 0 000-4zm10 0a2 2 0 100 4 2 2 0 000-4z" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    ),
+    ready: true,
+  },
+  {
     to: "/mapa",
     label: "Mapa",
     icon: (
@@ -84,7 +95,7 @@ const MODULES = [
     label: "Vendas",
     icon: (
       <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-4 w-4">
-        <path d="M3 3h2l.4 2M7 13h10l2-8H5.4M7 13L5.4 5M7 13a2 2 0 100 4 2 2 0 000-4zm10 0a2 2 0 100 4 2 2 0 000-4z" strokeLinecap="round" strokeLinejoin="round" />
+        <path d="M4 10h12M4 6l3-3 3 3 3-3 3 3M4 14l3 3 3-3 3 3 3-3" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
     ),
     ready: false,
@@ -160,6 +171,8 @@ export default function Layout({ children }: Props) {
 
       {/* Main content */}
       <div className="flex-1 flex flex-col overflow-hidden">{children}</div>
+
+      <FeedbackWidget />
     </div>
   );
 }

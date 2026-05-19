@@ -3,7 +3,7 @@ import clsx from "clsx";
 import { useFieldNotes, useCreateFieldNote } from "../hooks/useFieldNotes";
 import type { FieldNote } from "../api/fieldNotes";
 
-type FilterType = "todos" | "manual" | "task_completed";
+type FilterType = "todos" | "manual" | "task_completed" | "feedback";
 
 function isSameDay(a: Date, b: Date): boolean {
   return a.toDateString() === b.toDateString();
@@ -42,18 +42,26 @@ function formatTime(isoString: string): string {
 }
 
 function NoteCard({ note }: { note: FieldNote }) {
-  const isAuto = note.entry_type !== "manual";
+  const isFeedback = note.entry_type === "feedback";
+  const isAuto = note.entry_type === "task_completed";
   return (
     <div className={clsx(
       "rounded-lg border p-3 transition-colors",
-      isAuto
-        ? "bg-stone-50 border-stone-200"
-        : "bg-white border-stone-200 hover:border-stone-300"
+      isFeedback
+        ? "bg-amber-50 border-amber-200"
+        : isAuto
+          ? "bg-stone-50 border-stone-200"
+          : "bg-white border-stone-200 hover:border-stone-300"
     )}>
       <div className="flex items-start justify-between gap-3">
         <p className="text-sm text-stone-800 whitespace-pre-wrap flex-1 leading-relaxed">
           {note.content}
         </p>
+        {isFeedback && (
+          <span className="shrink-0 text-[10px] font-medium text-amber-600 bg-amber-100 rounded px-1.5 py-0.5 mt-0.5">
+            ⚠ feedback
+          </span>
+        )}
         {isAuto && (
           <span className="shrink-0 text-[10px] font-medium text-stone-400 bg-stone-100 rounded px-1.5 py-0.5 mt-0.5">
             automático
@@ -68,7 +76,13 @@ function NoteCard({ note }: { note: FieldNote }) {
             <span>{note.executor}</span>
           </>
         )}
-        {note.culture && (
+        {isFeedback && note.management_unit && (
+          <>
+            <span className="text-stone-300">·</span>
+            <span className="font-mono text-amber-500">{note.management_unit}</span>
+          </>
+        )}
+        {!isFeedback && note.culture && (
           <>
             <span className="text-stone-300">·</span>
             <span className="text-amber-600 font-medium">{note.culture}</span>
@@ -161,13 +175,15 @@ export default function CadernoPage() {
 
           {/* Filtro por tipo */}
           <div className="flex items-center gap-0.5 rounded-md border border-stone-200 p-0.5">
-            {(["todos", "manual", "task_completed"] as FilterType[]).map((f) => (
+            {(["todos", "manual", "task_completed", "feedback"] as FilterType[]).map((f) => (
               <button key={f} onClick={() => setFilter(f)}
                 className={clsx(
                   "rounded px-2 py-0.5 text-xs font-medium transition-colors",
-                  filter === f ? "bg-stone-900 text-white" : "text-stone-500 hover:bg-stone-100"
+                  filter === f
+                    ? f === "feedback" ? "bg-amber-500 text-white" : "bg-stone-900 text-white"
+                    : "text-stone-500 hover:bg-stone-100"
                 )}>
-                {f === "todos" ? "Todos" : f === "manual" ? "Manual" : "Automático"}
+                {f === "todos" ? "Todos" : f === "manual" ? "Manual" : f === "task_completed" ? "Automático" : "⚠ Feedback"}
               </button>
             ))}
           </div>

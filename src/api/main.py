@@ -8,6 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.deps import get_current_user
 from app.api.routes import config as config_router
 from app.api.routes import field_notes as field_notes_router
+from app.api.routes import purchase as purchase_router
 from app.api.routes import settings as settings_router
 from app.api.routes import tasks
 from app.core.config import settings
@@ -55,6 +56,7 @@ app.include_router(tasks.router, prefix="/api/v1", dependencies=[Depends(get_cur
 app.include_router(field_notes_router.router, prefix="/api/v1", dependencies=[Depends(get_current_user)])
 app.include_router(settings_router.router, prefix="/api/v1")
 app.include_router(config_router.router, prefix="/api/v1")
+app.include_router(purchase_router.router, prefix="/api/v1")
 
 
 @app.get("/health")

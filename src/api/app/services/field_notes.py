@@ -19,7 +19,7 @@ class FieldNoteService:
     def create(self, payload: FieldNoteCreate) -> FieldNote:
         note = FieldNote(
             content=payload.content,
-            entry_type="manual",
+            entry_type=payload.entry_type,
             culture=payload.culture,
             management_unit=payload.management_unit,
             executor=payload.executor,
