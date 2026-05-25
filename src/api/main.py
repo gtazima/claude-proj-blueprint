@@ -6,6 +6,7 @@ from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.deps import get_current_user
+from app.models import chain as _chain_models  # noqa: F401 — registra TaskChain/TaskChainMember no metadata
 from app.api.routes import config as config_router
 from app.api.routes import field_notes as field_notes_router
 from app.api.routes import purchase as purchase_router

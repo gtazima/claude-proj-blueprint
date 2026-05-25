@@ -11,6 +11,19 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field
 
 
+class ChainInfo(BaseModel):
+    """Posição de uma tarefa em uma cadeia."""
+    chain_id: UUID
+    position: int
+    total: int
+    task_ids: list[UUID]
+
+
+class TaskLinkPayload(BaseModel):
+    """Payload para vincular esta tarefa a outra."""
+    related_task_id: UUID
+
+
 class TaskCreate(BaseModel):
     """Payload para criar uma tarefa."""
 
@@ -78,6 +91,7 @@ class TaskRead(BaseModel):
     culture_slug: str | None
     ambiente_slug: str | None
     lote_slug: str | None
+    chains: list[ChainInfo] = []
 
 
 class TaskWithPriority(TaskRead):

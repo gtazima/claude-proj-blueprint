@@ -87,10 +87,15 @@ export default function TaskCard({ task, auxiliaryLabel, displayTitle }: Props) 
     },
   });
 
+  const unlinkChain = useMutation({
+    mutationFn: ({ otherId }: { otherId: string }) => tasksApi.unlinkTask(task.id, otherId),
+    onSuccess: invalidate,
+  });
+
   const isCompleted = task.completed_at !== null;
   const isLoading   = complete.isPending || uncomplete.isPending || remove.isPending ||
-                      applyTag.isPending || changeExecutor.isPending;
-  const depCount = task.dependency_ids.length;
+                      applyTag.isPending || changeExecutor.isPending || unlinkChain.isPending;
+  const chains = task.chains ?? [];
 
   return (
     <>
@@ -168,17 +173,14 @@ export default function TaskCard({ task, auxiliaryLabel, displayTitle }: Props) 
                   })}
                 </span>
               )}
-              {depCount > 0 && (
-                <span
-                  className="inline-flex items-center gap-0.5 text-blue-500 font-medium"
-                  title={`Vinculada a ${depCount} tarefa${depCount > 1 ? "s" : ""}`}
-                >
+              {chains.map((chain) => (
+                <span key={chain.chain_id} className="inline-flex items-center gap-0.5 text-blue-500 font-medium">
                   <svg className="h-2.5 w-2.5" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M10 6a3 3 0 010 4M6 10a3 3 0 010-4M8 2v1M8 13v1M2 8h1M13 8h1" strokeLinecap="round" />
                   </svg>
-                  {depCount}
+                  <span>{chain.position}/{chain.total}</span>
                 </span>
-              )}
+              ))}
               {task.deferral_count > 0 && (
                 <span className={clsx(
                   "font-medium",

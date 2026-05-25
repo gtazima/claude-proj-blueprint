@@ -1,5 +1,12 @@
 export type Executor = string;
 
+export interface ChainInfo {
+  chain_id: string;
+  position: number;
+  total: number;
+  task_ids: string[];
+}
+
 export interface Task {
   id: string;
   title: string;
@@ -21,6 +28,7 @@ export interface Task {
   culture_slug: string | null;
   ambiente_slug: string | null;
   lote_slug: string | null;
+  chains: ChainInfo[];
 }
 
 export interface TaskWithPriority extends Task {
@@ -129,4 +137,15 @@ export const tasksApi = {
 
   restore: (id: string) =>
     request<Task>(`/tasks/${id}/restore`, { method: "POST" }),
+
+  listChainTails: () => request<Task[]>("/tasks/chain-tails"),
+
+  linkTask: (id: string, relatedTaskId: string) =>
+    request<Task>(`/tasks/${id}/link`, {
+      method: "POST",
+      body: JSON.stringify({ related_task_id: relatedTaskId }),
+    }),
+
+  unlinkTask: (id: string, relatedId: string) =>
+    request<void>(`/tasks/${id}/link/${relatedId}`, { method: "DELETE" }),
 };

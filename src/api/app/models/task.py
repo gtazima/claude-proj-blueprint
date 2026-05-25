@@ -50,6 +50,9 @@ class Task(SQLModel, table=True):
     ambiente_slug: str | None = Field(default=None, max_length=60, index=True)
     lote_slug: str | None = Field(default=None, max_length=60, index=True)
 
+    # Título original preservado quando a tarefa entra em uma cadeia
+    base_title: str | None = Field(default=None, max_length=200)
+
     # Google sync
     is_pending_review: bool = Field(default=False)
     duration_minutes: int | None = Field(default=None, ge=1)

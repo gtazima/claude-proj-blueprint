@@ -7,6 +7,7 @@ import {
   sortedByFrequency, incrementTagFrequency, buildTitle, parseTitle,
 } from "../constants/activityTags.ts";
 import { usePeople, useActivityTypes, useCultures, useAmbientes, useLotes } from "../hooks/useConfig.ts";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface Props {
   onClose:       () => void;
@@ -30,6 +31,7 @@ export default function CreateTaskModal({ onClose, onSuccess, initialType, initi
   const editSource = task ?? initialTask;
   const isEdit  = !!task;
   const { push: pushUndo } = useUndo();
+  const qc = useQueryClient();
 
   const { data: people = [] }        = usePeople();
   const { data: activityTypes = [] } = useActivityTypes();
@@ -68,9 +70,10 @@ export default function CreateTaskModal({ onClose, onSuccess, initialType, initi
       ? toLocalDateKey(new Date(editSource.scheduled_window_end))
       : initialDate ?? ""
   );
-  const [depSearch, setDepSearch]   = useState("");
-  const [depIds, setDepIds]         = useState<string[]>(editSource?.dependency_ids ?? []);
-  const [showDeps, setShowDeps]     = useState(false);
+  const [chainSearch, setChainSearch] = useState("");
+  const [showChain, setShowChain]     = useState(false);
+  // IDs de tarefas a vincular após salvar (apenas para tarefa nova — edição usa link direto)
+  const [pendingLinks, setPendingLinks] = useState<string[]>([]);
 
   const typeTags    = sortedByFrequency(typeNames.length > 0 ? typeNames : activityTypes.map((t) => t.name));
   const cultureTags = sortedByFrequency(cultureNames.length > 0 ? cultureNames : cultures.map((c) => c.name));
@@ -80,23 +83,51 @@ export default function CreateTaskModal({ onClose, onSuccess, initialType, initi
   const typeSlug    = (name: string | null) => name ? (activityTypes.find((t) => t.name === name)?.slug ?? null) : null;
   const cultureSlug = (name: string | null) => name ? (cultures.find((c) => c.name === name)?.slug ?? null) : null;
 
+  // Caudas das cadeias existentes (picker de vincular)
+  const { data: chainTails = [] } = useQuery({
+    queryKey: ["tasks", "chain-tails"],
+    queryFn:  tasksApi.listChainTails,
+    staleTime: 10_000,
+  });
+
+  // Todas as tarefas (fallback quando não há cadeias)
   const { data: allTasks = [] } = useQuery({
     queryKey: ["tasks", "today"],
     queryFn:  tasksApi.listToday,
     staleTime: 30_000,
   });
 
-  const depCandidates = allTasks.filter((t) =>
-    t.id !== task?.id &&
-    !depIds.includes(t.id) &&
-    (!depSearch.trim() || t.title.toLowerCase().includes(depSearch.toLowerCase()))
+  // Cadeias atuais desta tarefa (para modo edição)
+  const currentChains = task?.chains ?? [];
+
+  // Candidatos no picker: caudas de cadeia primeiro, depois demais tarefas
+  const tailIds = new Set(chainTails.map((t) => t.id));
+  const allCandidates = [
+    ...chainTails.filter((t) => t.id !== task?.id),
+    ...allTasks.filter((t) => t.id !== task?.id && !tailIds.has(t.id)),
+  ];
+  const chainCandidates = allCandidates.filter((t) =>
+    !chainSearch.trim() || t.title.toLowerCase().includes(chainSearch.toLowerCase())
   );
-  const selectedDeps = allTasks.filter((t) => depIds.includes(t.id));
-  const toggleDep = (id: string) =>
-    setDepIds((p) => p.includes(id) ? p.filter((d) => d !== id) : [...p, id]);
+
+  // Mutação de link direto (para modo edição)
+  const linkTask = useMutation({
+    mutationFn: (relatedId: string) => tasksApi.linkTask(task!.id, relatedId),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["tasks"] });
+    },
+  });
+
+  const unlinkTask = useMutation({
+    mutationFn: ({ otherId }: { otherId: string }) =>
+      tasksApi.unlinkTask(task!.id, otherId),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["tasks"] });
+    },
+  });
 
   const save = useMutation({
-    mutationFn: () => {
+    mutationFn: async () => {
       const title = buildTitle(baseTitle.trim(), selType, selCulture) || baseTitle.trim() || task?.title;
       const windowEndISO = windowEnd
         ? new Date(windowEnd + "T23:59:59").toISOString()
@@ -107,7 +138,6 @@ export default function CreateTaskModal({ onClose, onSuccess, initialType, initi
           title:                title ?? task.title,
           description:          description.trim() || null,
           executor,
-          dependency_ids:       depIds,
           scheduled_window_end: windowEndISO,
           activity_type_slug:   typeSlug(selType),
           culture_slug:         cultureSlug(selCulture),
@@ -116,18 +146,24 @@ export default function CreateTaskModal({ onClose, onSuccess, initialType, initi
         });
       }
 
-      return tasksApi.create({
+      const created = await tasksApi.create({
         title:              title ?? "",
         description:        description.trim() || undefined,
         executor,
         financial_score:    0,
-        dependency_ids:     depIds,
         activity_type_slug: typeSlug(selType),
         culture_slug:       cultureSlug(selCulture),
         ambiente_slug:      selAmbiente,
         lote_slug:          selLote,
         ...(windowEndISO ? { scheduled_window_end: windowEndISO } : {}),
       });
+
+      // Cria vínculos de cadeia pendentes
+      for (const relatedId of pendingLinks) {
+        await tasksApi.linkTask(created.id, relatedId);
+      }
+
+      return created;
     },
     onSuccess: (data) => {
       if (!isEdit) localStorage.setItem(LAST_EXECUTOR_KEY, executor);
@@ -142,7 +178,6 @@ export default function CreateTaskModal({ onClose, onSuccess, initialType, initi
             description: task.description,
             executor: task.executor,
             scheduled_window_end: task.scheduled_window_end,
-            dependency_ids: task.dependency_ids,
           },
           label: `"${task.title}" editada`,
         });
@@ -177,31 +212,20 @@ export default function CreateTaskModal({ onClose, onSuccess, initialType, initi
             )}
           </div>
 
-          {/* Executor */}
-          <div className="flex gap-2 flex-wrap">
-            {activePeople.map((p) => {
-              const active = executor === p.slug;
-              return (
-                <button key={p.slug} type="button" onClick={() => setExecutor(p.slug)}
-                  className={clsx(
-                    "flex-1 min-w-[72px] flex flex-col items-center gap-1 rounded-lg border py-2.5 transition-all text-xs",
-                    active ? "border-[color:var(--person-color)] bg-stone-50" : "border-stone-200 hover:border-stone-300"
-                  )}
-                  style={{ "--person-color": p.color } as React.CSSProperties}
-                >
-                  <span className={clsx(
-                    "h-6 w-6 rounded-full flex items-center justify-center text-[11px] font-bold text-white"
-                  )}
-                    style={{ background: active ? p.color : "#D1D5DB" }}
-                  >
-                    {p.name.charAt(0).toUpperCase()}
-                  </span>
-                  <span className={clsx("font-medium", active ? "text-stone-800" : "text-stone-500")}>
-                    {p.name}
-                  </span>
-                </button>
-              );
-            })}
+          {/* Responsável */}
+          <div>
+            <label className="block text-[11px] font-semibold text-stone-400 uppercase tracking-wide mb-1">
+              Responsável
+            </label>
+            <select
+              value={executor}
+              onChange={(e) => setExecutor(e.target.value)}
+              className="w-full rounded-md border border-stone-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 bg-white"
+            >
+              {activePeople.map((p) => (
+                <option key={p.slug} value={p.slug}>{p.name}</option>
+              ))}
+            </select>
           </div>
 
           {/* Type tags */}
@@ -252,12 +276,12 @@ export default function CreateTaskModal({ onClose, onSuccess, initialType, initi
             </div>
           </div>
 
-          {/* Ambiente */}
+          {/* Local */}
           {ambientes.length > 0 && (
             <div>
               <div className="flex items-center justify-between mb-1.5">
                 <label className="text-[11px] font-semibold text-stone-400 uppercase tracking-wide">
-                  Ambiente
+                  Local
                 </label>
                 {selAmbiente && <button onClick={() => setSelAmbiente(null)} className="text-xs text-stone-400 hover:text-stone-600">Limpar</button>}
               </div>
@@ -345,51 +369,104 @@ export default function CreateTaskModal({ onClose, onSuccess, initialType, initi
             />
           </div>
 
-          {/* Dependencies */}
+          {/* Encadeamento */}
           <div>
-            <button type="button" onClick={() => setShowDeps(!showDeps)}
+            <button type="button" onClick={() => setShowChain(!showChain)}
               className="flex items-center gap-1.5 text-[11px] font-semibold text-stone-400 uppercase tracking-wide hover:text-stone-600 transition-colors">
-              <svg className={clsx("h-3 w-3 transition-transform", showDeps && "rotate-90")}
+              <svg className={clsx("h-3 w-3 transition-transform", showChain && "rotate-90")}
                 viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M4 2l4 4-4 4" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
-              Vincular tarefas
-              {depIds.length > 0 && (
+              Vincular à cadeia
+              {(isEdit ? currentChains.length : pendingLinks.length) > 0 && (
                 <span className="ml-1 bg-blue-100 text-blue-700 rounded-full px-1.5 py-0.5 font-medium normal-case">
-                  {depIds.length}
+                  {isEdit ? currentChains.length : pendingLinks.length}
                 </span>
               )}
             </button>
 
-            {showDeps && (
+            {showChain && (
               <div className="mt-2 border border-stone-200 rounded-lg overflow-hidden">
-                {selectedDeps.length > 0 && (
+                {/* Cadeias atuais (modo edição) */}
+                {isEdit && currentChains.length > 0 && (
                   <div className="flex flex-wrap gap-1 p-2 border-b border-stone-200 bg-blue-50/50">
-                    {selectedDeps.map((t) => (
-                      <span key={t.id}
+                    {currentChains.map((chain) => (
+                      <span key={chain.chain_id}
                         className="inline-flex items-center gap-1 rounded border border-blue-200 bg-white px-2 py-0.5 text-xs text-blue-700">
-                        {t.title}
-                        <button onClick={() => toggleDep(t.id)} className="text-blue-400 hover:text-blue-700 ml-0.5">✕</button>
+                        cadeia {chain.position}/{chain.total}
+                        <button
+                          type="button"
+                          onClick={() => unlinkTask.mutate({
+                            otherId: chain.task_ids.find((id) => id !== task!.id) ?? "",
+                          })}
+                          className="text-blue-400 hover:text-blue-700 ml-0.5"
+                        >✕</button>
                       </span>
                     ))}
                   </div>
                 )}
+
+                {/* Links pendentes (modo criação) */}
+                {!isEdit && pendingLinks.length > 0 && (
+                  <div className="flex flex-wrap gap-1 p-2 border-b border-stone-200 bg-blue-50/50">
+                    {pendingLinks.map((id) => {
+                      const t = allTasks.find((t) => t.id === id) ?? chainTails.find((t) => t.id === id);
+                      return (
+                        <span key={id}
+                          className="inline-flex items-center gap-1 rounded border border-blue-200 bg-white px-2 py-0.5 text-xs text-blue-700">
+                          {t?.title ?? id}
+                          <button type="button" onClick={() => setPendingLinks((p) => p.filter((d) => d !== id))}
+                            className="text-blue-400 hover:text-blue-700 ml-0.5">✕</button>
+                        </span>
+                      );
+                    })}
+                  </div>
+                )}
+
                 <div className="p-2 border-b border-stone-100">
-                  <input type="text" value={depSearch} onChange={(e) => setDepSearch(e.target.value)}
-                    placeholder="Buscar tarefa…"
+                  <input type="text" value={chainSearch} onChange={(e) => setChainSearch(e.target.value)}
+                    placeholder="Buscar tarefa para encadear…"
                     className="w-full rounded border border-stone-200 px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-400"
                   />
                 </div>
-                <div className="max-h-36 overflow-y-auto">
-                  {depCandidates.length === 0
+
+                <div className="max-h-40 overflow-y-auto">
+                  {chainCandidates.length === 0
                     ? <p className="text-xs text-stone-400 text-center py-3">Nenhuma tarefa encontrada</p>
-                    : depCandidates.map((t) => (
-                      <button key={t.id} type="button" onClick={() => toggleDep(t.id)}
-                        className="flex items-center gap-2 w-full px-3 py-1.5 text-xs text-stone-700 hover:bg-stone-50 transition-colors text-left">
-                        <span className="h-3.5 w-3.5 rounded border border-stone-300 shrink-0" />
-                        <span className="truncate">{t.title}</span>
-                      </button>
-                    ))
+                    : chainCandidates.map((t) => {
+                      const isTail = tailIds.has(t.id);
+                      const alreadyLinked = isEdit
+                        ? currentChains.some((c) => c.task_ids.includes(t.id))
+                        : pendingLinks.includes(t.id);
+                      const chain = t.chains?.[0];
+                      return (
+                        <button key={t.id} type="button"
+                          disabled={alreadyLinked}
+                          onClick={() => {
+                            if (isEdit && task) {
+                              linkTask.mutate(t.id);
+                            } else {
+                              setPendingLinks((p) => [...p, t.id]);
+                            }
+                          }}
+                          className={clsx(
+                            "flex items-center gap-2 w-full px-3 py-1.5 text-xs text-left transition-colors",
+                            alreadyLinked
+                              ? "text-stone-300 cursor-default"
+                              : "text-stone-700 hover:bg-stone-50"
+                          )}
+                        >
+                          <span className={clsx(
+                            "h-3.5 w-3.5 rounded border shrink-0",
+                            alreadyLinked ? "border-blue-400 bg-blue-100" : "border-stone-300"
+                          )} />
+                          <span className="truncate flex-1">{t.title}</span>
+                          {isTail && chain && (
+                            <span className="shrink-0 text-blue-400 font-medium">{chain.position}/{chain.total}</span>
+                          )}
+                        </button>
+                      );
+                    })
                   }
                 </div>
               </div>
