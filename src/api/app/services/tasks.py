@@ -183,12 +183,7 @@ class TaskService:
         statement = select(Task).where(Task.deleted_at.is_(None))
         tasks = list(self.session.exec(statement).all())
 
-        active = [
-            t
-            for t in tasks
-            if t.completed_at is None
-            and not t.is_pending_review
-        ]
+        active = [t for t in tasks if t.completed_at is None]
         return sort_by_priority(active, now=now)
 
     def list_completed_today(self, *, now: datetime | None = None) -> list[Task]:

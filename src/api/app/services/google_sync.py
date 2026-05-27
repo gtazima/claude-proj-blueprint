@@ -152,7 +152,7 @@ def poll_tasks(token: str, prop: PropertySettings, session: Session) -> None:
             description=notes,
             executor="nao_atribuido",
             scheduled_window_start=scheduled,
-            is_pending_review=True,
+            is_pending_review=False,  # fila de revisão descartada
             google_task_id=google_task_id,
         ))
 
