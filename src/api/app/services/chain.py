@@ -65,6 +65,48 @@ class ChainService:
                 })
         return infos
 
+    def chain_infos_bulk(self, task_ids: list[UUID]) -> dict[UUID, list[dict]]:
+        """
+        Carrega dados de cadeia para uma lista de tarefas em 2 queries ao invés de N+1.
+        Retorna {task_id: [ChainInfo dict, ...]}.
+        """
+        if not task_ids:
+            return {}
+
+        # Query 1: todos os membros dessas tarefas
+        stmt = select(TaskChainMember).where(TaskChainMember.task_id.in_(task_ids))
+        memberships = list(self.session.exec(stmt).all())
+        if not memberships:
+            return {tid: [] for tid in task_ids}
+
+        # Query 2: todos os membros das cadeias envolvidas (para saber total e posição)
+        chain_ids = list({m.chain_id for m in memberships})
+        stmt2 = (
+            select(TaskChainMember)
+            .where(TaskChainMember.chain_id.in_(chain_ids))
+            .order_by(TaskChainMember.position)
+        )
+        all_members = list(self.session.exec(stmt2).all())
+
+        # Agrupar membros por cadeia
+        by_chain: dict[UUID, list[TaskChainMember]] = {}
+        for m in all_members:
+            by_chain.setdefault(m.chain_id, []).append(m)
+
+        # Construir resultado por tarefa
+        result: dict[UUID, list[dict]] = {tid: [] for tid in task_ids}
+        for m in memberships:
+            members = by_chain.get(m.chain_id, [])
+            pos = next((cm.position for cm in members if cm.task_id == m.task_id), None)
+            if pos is not None:
+                result[m.task_id].append({
+                    "chain_id": m.chain_id,
+                    "position": pos,
+                    "total": len(members),
+                    "task_ids": [cm.task_id for cm in members],
+                })
+        return result
+
     def get_chain_tails(self) -> list[Task]:
         """
         Retorna a última tarefa de cada cadeia (usada no picker do modal).

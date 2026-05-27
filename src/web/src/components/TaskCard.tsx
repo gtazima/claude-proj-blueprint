@@ -89,7 +89,13 @@ export default function TaskCard({ task, auxiliaryLabel, displayTitle }: Props) 
 
   const unlinkChain = useMutation({
     mutationFn: ({ otherId }: { otherId: string }) => tasksApi.unlinkTask(task.id, otherId),
-    onSuccess: invalidate,
+    onSuccess: (updatedTask) => {
+      // Atualiza o título imediatamente no cache sem esperar refetch
+      qc.setQueryData<TaskWithPriority[]>(["tasks", "today"], (old) =>
+        old?.map((t) => t.id === updatedTask.id ? { ...t, ...updatedTask } : t)
+      );
+      invalidate();
+    },
   });
 
   const isCompleted = task.completed_at !== null;

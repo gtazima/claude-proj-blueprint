@@ -147,5 +147,5 @@ export const tasksApi = {
     }),
 
   unlinkTask: (id: string, relatedId: string) =>
-    request<void>(`/tasks/${id}/link/${relatedId}`, { method: "DELETE" }),
+    request<Task>(`/tasks/${id}/link/${relatedId}`, { method: "DELETE" }),
 };

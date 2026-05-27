@@ -127,7 +127,11 @@ export default function CreateTaskModal({ onClose, onSuccess, initialType, initi
   const unlinkTask = useMutation({
     mutationFn: ({ otherId }: { otherId: string }) =>
       tasksApi.unlinkTask(task!.id, otherId),
-    onSuccess: () => {
+    onSuccess: (updatedTask) => {
+      // Atualiza o título imediatamente no cache sem esperar refetch
+      qc.setQueryData<import("../api/tasks.ts").TaskWithPriority[]>(["tasks", "today"], (old) =>
+        old?.map((t) => t.id === updatedTask.id ? { ...t, ...updatedTask } : t)
+      );
       void qc.invalidateQueries({ queryKey: ["tasks"] });
     },
   });

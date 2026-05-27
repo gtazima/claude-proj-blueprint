@@ -32,9 +32,23 @@ from app.services.tasks import (
 router = APIRouter(prefix="/tasks", tags=["tasks"])
 
 
-def _to_read(task, *, chain_svc: ChainService | None = None) -> TaskRead:
+def _to_read(
+    task,
+    *,
+    chain_svc: ChainService | None = None,
+    precomputed_chains: list[dict] | None = None,
+) -> TaskRead:
     chains = []
-    if chain_svc:
+    if precomputed_chains is not None:
+        # Dados já carregados em bulk — evita N+1
+        for info in precomputed_chains:
+            chains.append(ChainInfo(
+                chain_id=info["chain_id"],
+                position=info["position"],
+                total=info["total"],
+                task_ids=info["task_ids"],
+            ))
+    elif chain_svc:
         for info in chain_svc.chain_infos_for_task(task.id):
             chains.append(ChainInfo(
                 chain_id=info["chain_id"],
@@ -67,9 +81,15 @@ def _to_read(task, *, chain_svc: ChainService | None = None) -> TaskRead:
     )
 
 
-def _to_with_priority(task, *, score: int, chain_svc: ChainService | None = None) -> TaskWithPriority:
+def _to_with_priority(
+    task,
+    *,
+    score: int,
+    chain_svc: ChainService | None = None,
+    precomputed_chains: list[dict] | None = None,
+) -> TaskWithPriority:
     return TaskWithPriority(
-        **_to_read(task, chain_svc=chain_svc).model_dump(),
+        **_to_read(task, chain_svc=chain_svc, precomputed_chains=precomputed_chains).model_dump(),
         priority_score=score,
     )
 
@@ -93,14 +113,21 @@ def list_today(
 ) -> list[TaskWithPriority]:
     tasks = service.list_today()
     scores = service.compute_priority_for(tasks)
-    return [_to_with_priority(t, score=scores[t.id], chain_svc=chain_svc) for t in tasks]
+    chains_bulk = chain_svc.chain_infos_bulk([t.id for t in tasks])
+    return [
+        _to_with_priority(t, score=scores[t.id], precomputed_chains=chains_bulk.get(t.id, []))
+        for t in tasks
+    ]
 
 
 @router.get("/completed-today", response_model=list[TaskRead])
 def list_completed_today(
     service: TaskService = Depends(get_task_service),
+    chain_svc: ChainService = Depends(get_chain_service),
 ) -> list[TaskRead]:
-    return [_to_read(t) for t in service.list_completed_today()]
+    tasks = service.list_completed_today()
+    chains_bulk = chain_svc.chain_infos_bulk([t.id for t in tasks])
+    return [_to_read(t, precomputed_chains=chains_bulk.get(t.id, [])) for t in tasks]
 
 
 @router.get("/upcoming", response_model=list[TaskWithPriority])
@@ -111,7 +138,11 @@ def list_upcoming(
 ) -> list[TaskWithPriority]:
     tasks = service.list_upcoming(days=days)
     scores = service.compute_priority_for(tasks)
-    return [_to_with_priority(t, score=scores[t.id], chain_svc=chain_svc) for t in tasks]
+    chains_bulk = chain_svc.chain_infos_bulk([t.id for t in tasks])
+    return [
+        _to_with_priority(t, score=scores[t.id], precomputed_chains=chains_bulk.get(t.id, []))
+        for t in tasks
+    ]
 
 
 @router.get("/pending-review", response_model=list[TaskRead])
@@ -282,17 +313,18 @@ def link_task(
     return _to_read(task, chain_svc=chain_svc)
 
 
-@router.delete("/{task_id}/link/{related_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{task_id}/link/{related_id}", response_model=TaskRead)
 def unlink_task(
     task_id: UUID,
     related_id: UUID,
     service: TaskService = Depends(get_task_service),
     chain_svc: ChainService = Depends(get_chain_service),
-) -> Response:
-    """Remove o vínculo de cadeia entre duas tarefas."""
+) -> TaskRead:
+    """Remove o vínculo de cadeia entre duas tarefas. Retorna a tarefa com título atualizado."""
     try:
         service.get(task_id)
     except TaskNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e)) from e
     chain_svc.unlink(task_id, related_id)
-    return Response(status_code=status.HTTP_204_NO_CONTENT)
+    task = service.get(task_id)  # recarrega após atualização de título
+    return _to_read(task, chain_svc=chain_svc)
