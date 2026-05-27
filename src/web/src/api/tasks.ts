@@ -22,7 +22,6 @@ export interface Task {
   repeatedly_deferred: boolean;
   created_at: string;
   updated_at: string;
-  is_pending_review: boolean;
   duration_minutes: number | null;
   activity_type_slug: string | null;
   culture_slug: string | null;
@@ -95,14 +94,6 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
 export const tasksApi = {
   listToday: () => request<TaskWithPriority[]>("/tasks/today"),
-
-  listPendingReview: () => request<Task[]>("/tasks/pending-review"),
-
-  confirmReview: (id: string) =>
-    request<Task>(`/tasks/${id}/confirm-review`, { method: "POST" }),
-
-  discardReview: (id: string) =>
-    request<void>(`/tasks/${id}/discard-review`, { method: "POST" }),
 
   listCompletedToday: () => request<Task[]>("/tasks/completed-today"),
 

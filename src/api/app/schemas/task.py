@@ -85,7 +85,6 @@ class TaskRead(BaseModel):
     repeatedly_deferred: bool
     created_at: datetime
     updated_at: datetime
-    is_pending_review: bool
     duration_minutes: int | None
     activity_type_slug: str | None
     culture_slug: str | None

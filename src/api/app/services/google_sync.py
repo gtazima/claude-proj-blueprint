@@ -100,7 +100,7 @@ def complete_task(google_task_id: str, token: str, list_id: str) -> None:
 # ── Google Tasks polling (pull) ───────────────────────────────────────────
 
 def poll_tasks(token: str, prop: PropertySettings, session: Session) -> None:
-    """Importa tarefas novas criadas diretamente no Google Tasks como pending_review."""
+    """Importa tarefas novas criadas diretamente no Google Tasks."""
     if not prop.google_tasks_list_id:
         return
 
@@ -152,7 +152,6 @@ def poll_tasks(token: str, prop: PropertySettings, session: Session) -> None:
             description=notes,
             executor="nao_atribuido",
             scheduled_window_start=scheduled,
-            is_pending_review=False,  # fila de revisão descartada
             google_task_id=google_task_id,
         ))
 
@@ -187,7 +186,6 @@ def run_sync_cycle(session: Session) -> None:
     stmt = (
         select(Task)
         .where(Task.deleted_at.is_(None))  # type: ignore[attr-defined]
-        .where(Task.is_pending_review == False)  # noqa: E712
     )
     if last_sync:
         if last_sync.tzinfo is None:
@@ -251,7 +249,7 @@ def _sync_single_task(session: Session, task_id: UUID) -> None:
         return
 
     task = session.get(Task, task_id)
-    if not task or task.is_pending_review:
+    if not task:
         return
 
     token = get_valid_access_token(session)
