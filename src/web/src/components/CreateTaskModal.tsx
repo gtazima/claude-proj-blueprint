@@ -100,11 +100,17 @@ export default function CreateTaskModal({ onClose, onSuccess, initialType, initi
   // Cadeias atuais desta tarefa (para modo edição)
   const currentChains = task?.chains ?? [];
 
-  // Candidatos no picker: caudas de cadeia primeiro, depois demais tarefas
+  // Candidatos no picker:
+  //   1. Caudas de cadeias existentes (último membro) — selecionar estende a cadeia
+  //   2. Tarefas sem nenhuma cadeia — selecionar inicia nova cadeia
+  // Tarefas no MEIO de uma cadeia (chains.length > 0 mas não são caudas) são excluídas:
+  // selecioná-las criaria uma nova cadeia paralela em vez de estender a existente.
   const tailIds = new Set(chainTails.map((t) => t.id));
   const allCandidates = [
     ...chainTails.filter((t) => t.id !== task?.id),
-    ...allTasks.filter((t) => t.id !== task?.id && !tailIds.has(t.id)),
+    ...allTasks.filter(
+      (t) => t.id !== task?.id && !tailIds.has(t.id) && (t.chains?.length ?? 0) === 0
+    ),
   ];
   const chainCandidates = allCandidates.filter((t) =>
     !chainSearch.trim() || t.title.toLowerCase().includes(chainSearch.toLowerCase())

@@ -67,9 +67,9 @@ def _to_read(task, *, chain_svc: ChainService | None = None) -> TaskRead:
     )
 
 
-def _to_with_priority(task, *, score: int) -> TaskWithPriority:
+def _to_with_priority(task, *, score: int, chain_svc: ChainService | None = None) -> TaskWithPriority:
     return TaskWithPriority(
-        **_to_read(task).model_dump(),
+        **_to_read(task, chain_svc=chain_svc).model_dump(),
         priority_score=score,
     )
 
@@ -79,19 +79,21 @@ def create_task(
     payload: TaskCreate,
     background_tasks: BackgroundTasks,
     service: TaskService = Depends(get_task_service),
+    chain_svc: ChainService = Depends(get_chain_service),
 ) -> TaskRead:
     task = service.create(payload)
     background_tasks.add_task(push_task_now, task.id)
-    return _to_read(task)
+    return _to_read(task, chain_svc=chain_svc)
 
 
 @router.get("/today", response_model=list[TaskWithPriority])
 def list_today(
     service: TaskService = Depends(get_task_service),
+    chain_svc: ChainService = Depends(get_chain_service),
 ) -> list[TaskWithPriority]:
     tasks = service.list_today()
     scores = service.compute_priority_for(tasks)
-    return [_to_with_priority(t, score=scores[t.id]) for t in tasks]
+    return [_to_with_priority(t, score=scores[t.id], chain_svc=chain_svc) for t in tasks]
 
 
 @router.get("/completed-today", response_model=list[TaskRead])
@@ -105,10 +107,11 @@ def list_completed_today(
 def list_upcoming(
     days: int = Query(default=7, ge=1, le=365),
     service: TaskService = Depends(get_task_service),
+    chain_svc: ChainService = Depends(get_chain_service),
 ) -> list[TaskWithPriority]:
     tasks = service.list_upcoming(days=days)
     scores = service.compute_priority_for(tasks)
-    return [_to_with_priority(t, score=scores[t.id]) for t in tasks]
+    return [_to_with_priority(t, score=scores[t.id], chain_svc=chain_svc) for t in tasks]
 
 
 @router.get("/pending-review", response_model=list[TaskRead])
@@ -122,12 +125,13 @@ def list_pending_review(
 def get_task(
     task_id: UUID,
     service: TaskService = Depends(get_task_service),
+    chain_svc: ChainService = Depends(get_chain_service),
 ) -> TaskRead:
     try:
         task = service.get(task_id)
     except TaskNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e)) from e
-    return _to_read(task)
+    return _to_read(task, chain_svc=chain_svc)
 
 
 @router.patch("/{task_id}", response_model=TaskRead)
@@ -136,13 +140,14 @@ def update_task(
     payload: TaskUpdate,
     background_tasks: BackgroundTasks,
     service: TaskService = Depends(get_task_service),
+    chain_svc: ChainService = Depends(get_chain_service),
 ) -> TaskRead:
     try:
         task = service.update(task_id, payload)
     except TaskNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e)) from e
     background_tasks.add_task(push_task_now, task.id)
-    return _to_read(task)
+    return _to_read(task, chain_svc=chain_svc)
 
 
 @router.delete("/{task_id}", status_code=status.HTTP_204_NO_CONTENT)
