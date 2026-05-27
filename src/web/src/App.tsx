@@ -9,6 +9,7 @@ import TarefasPage from "./pages/Today.tsx";
 import SettingsPage from "./pages/Settings.tsx";
 import GoogleCallbackPage from "./pages/GoogleCallback.tsx";
 import ComprasPage from "./pages/Compras.tsx";
+import ResetPasswordPage from "./pages/ResetPassword.tsx";
 
 function ProtectedRoutes() {
   const { session, loading } = useAuth();
@@ -45,8 +46,10 @@ export default function App() {
   return (
     <AuthProvider>
       <Routes>
-        <Route path="/login" element={<LoginWithRedirect />} />
-        <Route path="/*"     element={<ProtectedRoutes />} />
+        <Route path="/login"            element={<LoginWithRedirect />} />
+        {/* Rota pública — callback do e-mail de redefinição de senha */}
+        <Route path="/redefinir-senha"  element={<ResetPasswordPage />} />
+        <Route path="/*"                element={<ProtectedRoutes />} />
       </Routes>
     </AuthProvider>
   );
