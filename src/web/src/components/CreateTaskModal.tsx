@@ -101,16 +101,18 @@ export default function CreateTaskModal({ onClose, onSuccess, initialType, initi
   const currentChains = task?.chains ?? [];
 
   // Candidatos no picker:
-  //   1. Caudas de cadeias existentes (último membro) — selecionar estende a cadeia
-  //   2. Tarefas sem nenhuma cadeia — selecionar inicia nova cadeia
-  // Tarefas no MEIO de uma cadeia (chains.length > 0 mas não são caudas) são excluídas:
-  // selecioná-las criaria uma nova cadeia paralela em vez de estender a existente.
-  const tailIds = new Set(chainTails.map((t) => t.id));
+  //   1. Tarefas já encadeadas (priorizadas) — mais provável ter relação
+  //   2. Tarefas sem cadeia
+  // Inclui chain tails de outros dias não presentes em allTasks.
+  const todayIds = new Set(allTasks.map((t) => t.id));
+  const allAvailableTasks = [
+    ...allTasks,
+    ...chainTails.filter((t) => !todayIds.has(t.id)),
+  ];
+  const selfId = task?.id ?? "";
   const allCandidates = [
-    ...chainTails.filter((t) => t.id !== task?.id),
-    ...allTasks.filter(
-      (t) => t.id !== task?.id && !tailIds.has(t.id) && (t.chains?.length ?? 0) === 0
-    ),
+    ...allAvailableTasks.filter((t) => t.id !== selfId && (t.chains?.length ?? 0) > 0),
+    ...allAvailableTasks.filter((t) => t.id !== selfId && (t.chains?.length ?? 0) === 0),
   ];
   const chainCandidates = allCandidates.filter((t) =>
     !chainSearch.trim() || t.title.toLowerCase().includes(chainSearch.toLowerCase())
@@ -444,11 +446,10 @@ export default function CreateTaskModal({ onClose, onSuccess, initialType, initi
                   {chainCandidates.length === 0
                     ? <p className="text-xs text-stone-400 text-center py-3">Nenhuma tarefa encontrada</p>
                     : chainCandidates.map((t) => {
-                      const isTail = tailIds.has(t.id);
                       const alreadyLinked = isEdit
                         ? currentChains.some((c) => c.task_ids.includes(t.id))
                         : pendingLinks.includes(t.id);
-                      const chain = t.chains?.[0];
+                      const chainInfo = t.chains?.[0];
                       return (
                         <button key={t.id} type="button"
                           disabled={alreadyLinked}
@@ -471,8 +472,8 @@ export default function CreateTaskModal({ onClose, onSuccess, initialType, initi
                             alreadyLinked ? "border-blue-400 bg-blue-100" : "border-stone-300"
                           )} />
                           <span className="truncate flex-1">{t.title}</span>
-                          {isTail && chain && (
-                            <span className="shrink-0 text-blue-400 font-medium">{chain.position}/{chain.total}</span>
+                          {chainInfo && (
+                            <span className="shrink-0 text-blue-400 font-medium">{chainInfo.position}/{chainInfo.total}</span>
                           )}
                         </button>
                       );
