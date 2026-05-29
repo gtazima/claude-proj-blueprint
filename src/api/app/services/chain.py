@@ -4,8 +4,8 @@ Serviço de cadeias de tarefas.
 Uma cadeia é uma sequência ordenada de tarefas relacionadas. As regras:
 - Vínculo é sempre bidirecional e transitivo (A-B + B-C = cadeia A-B-C)
 - Uma tarefa pode pertencer a múltiplas cadeias independentes
-- O título é atualizado automaticamente: "base | pos/total" por cadeia
-- Ao remover/excluir um membro, os demais são reposicionados e os títulos atualizados
+- Títulos NUNCA são modificados — posição é exibida só no frontend via ChainInfo
+- Ao remover/excluir um membro, os demais são reposicionados automaticamente
 """
 
 from uuid import UUID
@@ -14,10 +14,6 @@ from sqlmodel import Session, select
 
 from app.models.chain import TaskChain, TaskChainMember
 from app.models.task import Task
-
-
-CHAIN_SEP = " | "
-SUFFIX_SEP = "/"
 
 
 class ChainService:
@@ -107,6 +103,16 @@ class ChainService:
                 })
         return result
 
+    def get_chain_tasks(self, chain_id: UUID) -> list[Task]:
+        """Retorna tarefas de uma cadeia ordenadas por posição (excluindo deletadas)."""
+        members = self.get_chain_members(chain_id)
+        tasks = []
+        for m in members:
+            task = self.session.get(Task, m.task_id)
+            if task and task.deleted_at is None:
+                tasks.append(task)
+        return tasks
+
     def get_chain_tails(self) -> list[Task]:
         """
         Retorna a última tarefa de cada cadeia (usada no picker do modal).
@@ -159,7 +165,6 @@ class ChainService:
             members = self.get_chain_members(chain_id)
             if members and members[-1].task_id == task_b_id and task_a_id not in {m.task_id for m in members}:
                 self._append_member(chain_id, task_a_id, members[-1].position + 1)
-                self._update_chain_titles(chain_id)
                 return
 
         # task_a como cauda → adicionar task_b após ela
@@ -167,7 +172,6 @@ class ChainService:
             members = self.get_chain_members(chain_id)
             if members and members[-1].task_id == task_a_id and task_b_id not in {m.task_id for m in members}:
                 self._append_member(chain_id, task_b_id, members[-1].position + 1)
-                self._update_chain_titles(chain_id)
                 return
 
         # Nenhuma cadeia existente é adequada — cria nova
@@ -177,7 +181,6 @@ class ChainService:
         self.session.refresh(chain)
         self._append_member(chain.id, task_b_id, 1)
         self._append_member(chain.id, task_a_id, 2)
-        self._update_chain_titles(chain.id)
 
     def unlink(self, task_a_id: UUID, task_b_id: UUID) -> None:
         """Remove o vínculo direto entre task_a e task_b na cadeia compartilhada."""
@@ -187,14 +190,11 @@ class ChainService:
 
         for chain_id in shared:
             self._remove_member_from_chain(task_a_id, chain_id)
-            self._update_chain_titles(chain_id)
 
     def remove_task_from_all_chains(self, task_id: UUID) -> None:
         """Chamado ao excluir uma tarefa — remove de todas as cadeias e renumera."""
         for m in self.get_memberships(task_id):
-            chain_id = m.chain_id
-            self._remove_member_from_chain(task_id, chain_id)
-            self._update_chain_titles(chain_id)
+            self._remove_member_from_chain(task_id, m.chain_id)
 
     # ------------------------------------------------------------------
     # Helpers internos
@@ -223,54 +223,9 @@ class ChainService:
         # Se sobrou apenas 1 membro, dissolve a cadeia
         if len(remaining) <= 1:
             for m in remaining:
-                task = self.session.get(Task, m.task_id)
-                if task:
-                    self._restore_base_title(task)
-            for m in remaining:
                 self.session.delete(m)
             self.session.commit()
             chain = self.session.get(TaskChain, chain_id)
             if chain:
                 self.session.delete(chain)
-            self.session.commit()
-
-    def _update_chain_titles(self, chain_id: UUID) -> None:
-        """Atualiza o campo `title` de todos os membros da cadeia com o sufixo correto."""
-        members = self.get_chain_members(chain_id)
-        total = len(members)
-        for m in members:
-            task = self.session.get(Task, m.task_id)
-            if not task:
-                continue
-            # Garante base_title preenchido
-            if not task.base_title:
-                task.base_title = self._strip_chain_suffixes(task.title)
-            task.title = self._build_title(task, task.id)
-            self.session.add(task)
-        self.session.commit()
-
-    def _build_title(self, task: Task, task_id: UUID) -> str:
-        """Compõe título com sufixos de todas as cadeias da tarefa."""
-        base = task.base_title or self._strip_chain_suffixes(task.title)
-        suffixes = []
-        for chain, members in self.get_chains_for_task(task_id):
-            total = len(members)
-            pos = next((m.position for m in members if m.task_id == task_id), None)
-            if pos is not None:
-                suffixes.append(f"{pos}{SUFFIX_SEP}{total}")
-        if suffixes:
-            return base + CHAIN_SEP + CHAIN_SEP.join(suffixes)
-        return base
-
-    def _strip_chain_suffixes(self, title: str) -> str:
-        """Remove sufixos no formato ' | N/M' do título."""
-        import re
-        return re.sub(r"(\s\|\s\d+/\d+)+$", "", title).strip()
-
-    def _restore_base_title(self, task: Task) -> None:
-        """Restaura title a partir de base_title ao sair de todas as cadeias."""
-        if task.base_title:
-            task.title = task.base_title
-            task.base_title = None
-            self.session.add(task)
             self.session.commit()

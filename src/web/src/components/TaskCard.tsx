@@ -5,6 +5,7 @@ import { tasksApi, type TaskWithPriority } from "../api/tasks.ts";
 import { parseTitle, buildTitle, TYPE_TAGS } from "../constants/activityTags.ts";
 import { useUndo } from "../contexts/UndoContext.tsx";
 import { usePeople, useActivityTypes } from "../hooks/useConfig.ts";
+import ChainModal from "./ChainModal.tsx";
 import CompleteModal from "./CompleteModal.tsx";
 import CreateTaskModal from "./CreateTaskModal.tsx";
 import DeferModal from "./DeferModal.tsx";
@@ -30,9 +31,10 @@ export default function TaskCard({ task, auxiliaryLabel, displayTitle }: Props) 
   const typeNames = activityTypes.map((t) => t.name);
   const executorName = people.find((p) => p.slug === task.executor)?.name ?? task.executor;
   const otherPeople  = people.filter((p) => p.slug !== task.executor && p.is_active);
-  const [showEdit, setShowEdit]       = useState(false);
-  const [showDefer, setShowDefer]     = useState(false);
+  const [showEdit, setShowEdit]         = useState(false);
+  const [showDefer, setShowDefer]       = useState(false);
   const [showComplete, setShowComplete] = useState(false);
+  const [showChain, setShowChain]       = useState<string | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
@@ -180,12 +182,18 @@ export default function TaskCard({ task, auxiliaryLabel, displayTitle }: Props) 
                 </span>
               )}
               {chains.map((chain) => (
-                <span key={chain.chain_id} className="inline-flex items-center gap-0.5 text-blue-500 font-medium">
+                <button
+                  key={chain.chain_id}
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onClick={(e) => { e.stopPropagation(); setShowChain(chain.chain_id); }}
+                  className="inline-flex items-center gap-0.5 text-blue-500 font-medium hover:text-blue-700 hover:bg-blue-50 rounded px-0.5 transition-colors"
+                  title="Ver cadeia de tarefas"
+                >
                   <svg className="h-2.5 w-2.5" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M10 6a3 3 0 010 4M6 10a3 3 0 010-4M8 2v1M8 13v1M2 8h1M13 8h1" strokeLinecap="round" />
                   </svg>
                   <span>{chain.position}/{chain.total}</span>
-                </span>
+                </button>
               ))}
               {task.deferral_count > 0 && (
                 <span className={clsx(
@@ -255,6 +263,20 @@ export default function TaskCard({ task, auxiliaryLabel, displayTitle }: Props) 
         )}
       </div>
 
+      {showChain && (() => {
+        const activeChain = chains.find((c) => c.chain_id === showChain);
+        return activeChain ? (
+          <ChainModal
+            chain={activeChain}
+            currentTaskId={task.id}
+            onClose={() => setShowChain(null)}
+            onUnlink={(otherId) => {
+              unlinkChain.mutate({ otherId });
+              setShowChain(null);
+            }}
+          />
+        ) : null;
+      })()}
       {showEdit && (
         <CreateTaskModal
           task={task}

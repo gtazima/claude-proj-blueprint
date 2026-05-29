@@ -261,6 +261,16 @@ def list_chain_tails(
     return [_to_read(t, chain_svc=chain_svc) for t in tails]
 
 
+@router.get("/chain/{chain_id}/tasks", response_model=list[TaskRead])
+def list_chain_tasks(
+    chain_id: UUID,
+    chain_svc: ChainService = Depends(get_chain_service),
+) -> list[TaskRead]:
+    """Retorna todas as tarefas de uma cadeia ordenadas por posição."""
+    tasks = chain_svc.get_chain_tasks(chain_id)
+    return [_to_read(t, chain_svc=chain_svc) for t in tasks]
+
+
 @router.post("/{task_id}/link", response_model=TaskRead)
 def link_task(
     task_id: UUID,
@@ -275,7 +285,7 @@ def link_task(
     except TaskNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e)) from e
     chain_svc.link(task_id, payload.related_task_id)
-    task = service.get(task_id)  # recarrega após atualização de título
+    task = service.get(task_id)
     return _to_read(task, chain_svc=chain_svc)
 
 
@@ -286,11 +296,11 @@ def unlink_task(
     service: TaskService = Depends(get_task_service),
     chain_svc: ChainService = Depends(get_chain_service),
 ) -> TaskRead:
-    """Remove o vínculo de cadeia entre duas tarefas. Retorna a tarefa com título atualizado."""
+    """Remove o vínculo de cadeia entre duas tarefas."""
     try:
         service.get(task_id)
     except TaskNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e)) from e
     chain_svc.unlink(task_id, related_id)
-    task = service.get(task_id)  # recarrega após atualização de título
+    task = service.get(task_id)
     return _to_read(task, chain_svc=chain_svc)

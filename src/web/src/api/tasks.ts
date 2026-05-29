@@ -131,6 +131,9 @@ export const tasksApi = {
 
   listChainTails: () => request<Task[]>("/tasks/chain-tails"),
 
+  getChainTasks: (chainId: string) =>
+    request<Task[]>(`/tasks/chain/${chainId}/tasks`),
+
   linkTask: (id: string, relatedTaskId: string) =>
     request<Task>(`/tasks/${id}/link`, {
       method: "POST",
