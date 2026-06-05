@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import clsx from "clsx";
 import { useFieldNotes, useCreateFieldNote } from "../hooks/useFieldNotes";
 import type { FieldNote } from "../api/fieldNotes";
+import { useCultures, useAmbientes, useLotes } from "../hooks/useConfig";
 
 type FilterType = "todos" | "manual" | "task_completed" | "feedback";
 
@@ -103,7 +104,14 @@ export default function CadernoPage() {
   const [filter, setFilter] = useState<FilterType>("todos");
   const [keyword, setKeyword] = useState("");
   const [debouncedKeyword, setDebouncedKeyword] = useState("");
+  const [cultureSlug, setCultureSlug] = useState<string | undefined>(undefined);
+  const [ambienteSlug, setAmbienteSlug] = useState<string | undefined>(undefined);
+  const [loteSlug, setLoteSlug] = useState<string | undefined>(undefined);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const { data: cultures = [] }  = useCultures();
+  const { data: ambientes = [] } = useAmbientes();
+  const { data: lotes = [] }     = useLotes();
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedKeyword(keyword), 400);
@@ -113,8 +121,13 @@ export default function CadernoPage() {
   const queryFilters = {
     ...(filter !== "todos" ? { entry_type: filter } : {}),
     ...(debouncedKeyword ? { keyword: debouncedKeyword } : {}),
+    ...(cultureSlug  ? { culture_slug: cultureSlug }   : {}),
+    ...(ambienteSlug ? { ambiente_slug: ambienteSlug } : {}),
+    ...(loteSlug     ? { lote_slug: loteSlug }         : {}),
     limit: 200,
   };
+
+  const hasSlugFilters = !!(cultureSlug || ambienteSlug || loteSlug);
 
   const { data: notes = [], isLoading } = useFieldNotes(queryFilters);
   const createNote = useCreateFieldNote();
@@ -188,6 +201,76 @@ export default function CadernoPage() {
             ))}
           </div>
         </div>
+
+        {/* Filtros de dimensão — só exibe se há dados */}
+        {(cultures.length > 0 || ambientes.length > 0 || lotes.length > 0) && (
+          <div className="flex items-center gap-3 px-4 py-1.5 border-t border-stone-100 bg-stone-50/60 overflow-x-auto scrollbar-none">
+            {cultures.length > 0 && (
+              <div className="flex items-center gap-1.5 shrink-0">
+                <span className="text-[10px] font-semibold text-stone-400 uppercase tracking-wide shrink-0">Cultura</span>
+                {cultures.map((c) => (
+                  <button key={c.slug}
+                    onClick={() => setCultureSlug((v) => v === c.slug ? undefined : c.slug)}
+                    className={clsx(
+                      "inline-flex items-center gap-1 rounded border px-2 py-0.5 text-xs transition-colors select-none shrink-0",
+                      cultureSlug === c.slug
+                        ? "border-stone-700 bg-stone-800 text-white"
+                        : "border-stone-200 bg-white text-stone-600 hover:border-stone-400"
+                    )}>
+                    {c.color && <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: cultureSlug === c.slug ? "#fff" : c.color }} />}
+                    {c.name}
+                  </button>
+                ))}
+              </div>
+            )}
+            {cultures.length > 0 && ambientes.length > 0 && <span className="w-px h-4 bg-stone-200 shrink-0" />}
+            {ambientes.length > 0 && (
+              <div className="flex items-center gap-1.5 shrink-0">
+                <span className="text-[10px] font-semibold text-stone-400 uppercase tracking-wide shrink-0">Ambiente</span>
+                {ambientes.map((a) => (
+                  <button key={a.slug}
+                    onClick={() => setAmbienteSlug((v) => v === a.slug ? undefined : a.slug)}
+                    className={clsx(
+                      "inline-flex items-center gap-1 rounded border px-2 py-0.5 text-xs transition-colors select-none shrink-0",
+                      ambienteSlug === a.slug
+                        ? "border-stone-700 bg-stone-800 text-white"
+                        : "border-stone-200 bg-white text-stone-600 hover:border-stone-400"
+                    )}>
+                    {a.color && <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: ambienteSlug === a.slug ? "#fff" : a.color }} />}
+                    {a.name}
+                  </button>
+                ))}
+              </div>
+            )}
+            {(ambientes.length > 0 || cultures.length > 0) && lotes.length > 0 && <span className="w-px h-4 bg-stone-200 shrink-0" />}
+            {lotes.length > 0 && (
+              <div className="flex items-center gap-1.5 shrink-0">
+                <span className="text-[10px] font-semibold text-stone-400 uppercase tracking-wide shrink-0">Lote</span>
+                {lotes.map((l) => (
+                  <button key={l.slug}
+                    onClick={() => setLoteSlug((v) => v === l.slug ? undefined : l.slug)}
+                    className={clsx(
+                      "inline-flex items-center gap-1 rounded border px-2 py-0.5 text-xs transition-colors select-none shrink-0",
+                      loteSlug === l.slug
+                        ? "border-stone-700 bg-stone-800 text-white"
+                        : "border-stone-200 bg-white text-stone-600 hover:border-stone-400"
+                    )}>
+                    {l.color && <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: loteSlug === l.slug ? "#fff" : l.color }} />}
+                    {l.name}
+                  </button>
+                ))}
+              </div>
+            )}
+            {hasSlugFilters && (
+              <button
+                onClick={() => { setCultureSlug(undefined); setAmbienteSlug(undefined); setLoteSlug(undefined); }}
+                className="ml-auto shrink-0 text-[10px] text-stone-400 hover:text-red-600 transition-colors px-1.5 py-0.5 rounded hover:bg-red-50"
+              >
+                Limpar
+              </button>
+            )}
+          </div>
+        )}
       </header>
 
       {/* Content */}
@@ -237,7 +320,7 @@ export default function CadernoPage() {
               <path d="M7 7h6M7 10h6M7 13h4" strokeLinecap="round" />
             </svg>
             <p className="text-sm">
-              {debouncedKeyword || filter !== "todos"
+              {debouncedKeyword || filter !== "todos" || hasSlugFilters
                 ? "Nenhuma entrada encontrada para esse filtro."
                 : "Nenhuma entrada ainda. Registre sua primeira observação acima."}
             </p>

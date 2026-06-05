@@ -63,6 +63,9 @@ class FieldNoteService:
         keyword: str | None = None,
         date_from: date | None = None,
         date_to: date | None = None,
+        culture_slug: str | None = None,
+        ambiente_slug: str | None = None,
+        lote_slug: str | None = None,
         limit: int = 50,
         offset: int = 0,
     ) -> list[FieldNote]:
@@ -81,4 +84,10 @@ class FieldNoteService:
         if date_to:
             end = datetime(date_to.year, date_to.month, date_to.day, 23, 59, 59, tzinfo=timezone.utc)
             stmt = stmt.where(FieldNote.created_at <= end)
+        if culture_slug:
+            stmt = stmt.where(FieldNote.culture_slug == culture_slug)
+        if ambiente_slug:
+            stmt = stmt.where(FieldNote.ambiente_slug == ambiente_slug)
+        if lote_slug:
+            stmt = stmt.where(FieldNote.lote_slug == lote_slug)
         return list(self.session.exec(stmt.offset(offset).limit(limit)).all())

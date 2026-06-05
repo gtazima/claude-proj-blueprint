@@ -51,6 +51,9 @@ export interface FieldNoteFilters {
   keyword?: string;
   date_from?: string;
   date_to?: string;
+  culture_slug?: string;
+  ambiente_slug?: string;
+  lote_slug?: string;
   limit?: number;
   offset?: number;
 }

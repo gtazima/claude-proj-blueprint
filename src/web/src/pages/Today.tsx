@@ -6,11 +6,12 @@ import { useUndo } from "../contexts/UndoContext.tsx";
 import {
   sortedByFrequency, incrementTagFrequency, buildTitle,
 } from "../constants/activityTags.ts";
-import { useActivityTypes, useCultures } from "../hooks/useConfig.ts";
+import { useActivityTypes, useCultures, usePeople, useAmbientes, useLotes } from "../hooks/useConfig.ts";
 import KanbanView, { type KanbanMode, type DateDelta } from "../components/KanbanView.tsx";
 import CompletedTaskRow from "../components/CompletedTaskRow.tsx";
 import CreateTaskModal from "../components/CreateTaskModal.tsx";
 import AgendaSettingsDrawer from "../components/AgendaSettingsDrawer.tsx";
+import KanbanFilterBar, { type ActiveFilters, emptyFilters, hasActiveFilters, activeFilterCount } from "../components/KanbanFilterBar.tsx";
 
 const LAST_EXECUTOR_KEY = "last_executor";
 const MODE_KEY          = "kanban_mode";
@@ -51,11 +52,16 @@ export default function TodayPage() {
   const [createType, setCreateType] = useState<string | undefined>(undefined);
   const [showCompleted, setShowCompleted] = useState(false);
   const [showSettings, setShowSettings]   = useState(false);
+  const [showFilters, setShowFilters]     = useState(false);
+  const [filters, setFilters]             = useState<ActiveFilters>(emptyFilters);
   const qc = useQueryClient();
   const { undo, canUndo } = useUndo();
 
   const { data: activityTypes = [] } = useActivityTypes();
   const { data: cultures = [] }      = useCultures();
+  const { data: people = [] }        = usePeople();
+  const { data: ambientes = [] }     = useAmbientes();
+  const { data: lotes = [] }         = useLotes();
   const typeNames    = activityTypes.map((t) => t.name);
   const cultureNames = cultures.map((c) => c.name);
   const typeColorMap    = Object.fromEntries(activityTypes.map((t) => [t.name, t.color]));
@@ -85,6 +91,19 @@ export default function TodayPage() {
     showCompleted ? [...active, ...completedAsActive(completed)] : active,
     [active, completed, showCompleted]
   );
+
+  const filteredTasks = useMemo<TaskWithPriority[]>(() => {
+    if (!hasActiveFilters(filters)) return kanbanTasks;
+    const { executors, cultures: fc, activityTypes: fat, ambientes: famb, lotes: flot } = filters;
+    return kanbanTasks.filter((t) => {
+      if (executors.length && !executors.includes(t.executor)) return false;
+      if (fc.length  && !fc.includes(t.culture_slug ?? ""))        return false;
+      if (fat.length && !fat.includes(t.activity_type_slug ?? "")) return false;
+      if (famb.length && !famb.includes(t.ambiente_slug ?? ""))    return false;
+      if (flot.length && !flot.includes(t.lote_slug ?? ""))        return false;
+      return true;
+    });
+  }, [kanbanTasks, filters]);
 
   const quickCreate = useMutation({
     mutationFn: (tag: string) => {
@@ -229,8 +248,31 @@ export default function TodayPage() {
             </>
           )}
 
-          {/* Completed toggle — right-aligned */}
-          <div className="ml-auto flex items-center">
+          {/* Right controls */}
+          <div className="ml-auto flex items-center gap-1">
+            {/* Filter toggle */}
+            <button
+              onClick={() => setShowFilters((v) => !v)}
+              title="Filtrar tarefas"
+              className={clsx(
+                "flex items-center gap-1.5 rounded px-2.5 py-1 text-xs font-medium transition-colors border",
+                showFilters || hasActiveFilters(filters)
+                  ? "bg-stone-900 text-white border-stone-900"
+                  : "text-stone-400 hover:bg-stone-100 border-transparent"
+              )}
+            >
+              <svg className="h-3 w-3" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M1 3h10M3 6h6M5 9h2" strokeLinecap="round" />
+              </svg>
+              Filtrar
+              {activeFilterCount(filters) > 0 && (
+                <span className="ml-0.5 bg-green-500 text-white rounded-full text-[9px] font-bold w-3.5 h-3.5 flex items-center justify-center">
+                  {activeFilterCount(filters)}
+                </span>
+              )}
+            </button>
+
+            {/* Completed toggle */}
             <button onClick={() => setShowCompleted((v) => !v)}
               title={showCompleted ? "Ocultar concluídas no kanban" : "Exibir concluídas no kanban"}
               className={clsx(
@@ -246,6 +288,19 @@ export default function TodayPage() {
             </button>
           </div>
         </div>
+
+        {/* Filter bar — visible when toggled or when filters are active */}
+        {(showFilters || hasActiveFilters(filters)) && (
+          <KanbanFilterBar
+            filters={filters}
+            onChange={setFilters}
+            people={people}
+            cultures={cultures}
+            activityTypes={activityTypes}
+            ambientes={ambientes}
+            lotes={lotes}
+          />
+        )}
       </header>
 
       {/* ── Kanban ── */}
@@ -257,7 +312,7 @@ export default function TodayPage() {
             ))}
           </div>
         ) : (
-          <KanbanView tasks={kanbanTasks} mode={mode} dateDelta={delta} onAddTask={openCreate} typeNames={typeNames} cultureNames={cultureNames} typeColors={typeColorMap} cultureColors={cultureColorMap} />
+          <KanbanView tasks={filteredTasks} mode={mode} dateDelta={delta} onAddTask={openCreate} typeNames={typeNames} cultureNames={cultureNames} typeColors={typeColorMap} cultureColors={cultureColorMap} />
         )}
 
         {/* Completed strip — hidden when already shown in kanban */}
