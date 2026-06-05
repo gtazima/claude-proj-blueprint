@@ -192,6 +192,11 @@ Esse é o critério de priorização do agricultor — qualquer feature de agend
 - **WhatsApp é a interface do funcionário:** qualquer mudança no formato da ordem do dia precisa ser validada considerando leitura em dispositivo simples via WhatsApp
 - **Módulos com acesso restrito:** o módulo `culturas` suporta filtro e permissão por cultura individual — ao criar features nesse módulo, garantir que o controle de acesso é aplicado por cultura, não apenas por módulo
 - **Caderno de campo é fonte de memória:** toda tarefa concluída deve gerar um registro no caderno. Esse fluxo é crítico — é daí que a IA extrai padrões, datas de repetição, sazonalidade e contexto histórico
+- **Render Docker build cache:** "Deploy com sucesso" não garante novo código. Inspecionar o image hash nos logs de build. `COPY . .` é cacheada mesmo com novos commits se `pyproject.toml`/`uv.lock` não mudaram. Usar "Clear build cache & deploy" quando necessário. Ver post-mortem `2026-05-27-is-pending-review-e-render-cache.md`.
+- **PWA service worker com autoUpdate:** fechar a aba não ativa o SW novo — é preciso fechar TODAS as janelas do mesmo origin (incluindo anônimas). Para debug, checar qual bundle JS está sendo carregado (DevTools Network → nome do arquivo .js principal). SW antigo pode sobreviver em modo anônimo se a janela for mantida aberta.
+- **VITE_API_URL é baked no bundle:** alterações em variáveis de ambiente `VITE_*` só têm efeito após rebuild completo do Vite + novo deploy do Cloudflare Worker.
+- **Features descartadas devem ser removidas imediatamente:** deixar filtros "inertes" no código é perigoso — eles continuam tendo efeito silencioso. Quando uma feature sai do UX, remover o código na mesma sessão (modelo, schema, rotas, services, frontend).
+- **Health endpoint sem prefixo `/api/v1`:** `GET /health` retorna `{"status":"ok"}` sem autenticação. Monitoramento externo deve usar `https://agroecologia.onrender.com/health`, não `/api/v1/health`.
 
 ## Memory (L4)
 Memória semântica de longo prazo para decisões, padrões e contexto entre sessões.
